@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "645073564276",
+    "project_id": "calendarapp-596b3",
+    "storage_bucket": "calendarapp-596b3.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:645073564276:android:28630200c0762985441721",
+        "android_client_info": {
+          "package_name": "com.example.khoa_luan1"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "645073564276-q4m9ictunqe92bb96p0lqks6v0r0999d.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmxD8wLCccdD7ofzin6eQMSKcPbbGSFlY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "645073564276-q4m9ictunqe92bb96p0lqks6v0r0999d.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "645073564276-4lfpln0uajmscoj2oiao7m7skk8orbhq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.khoaLuan1"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
