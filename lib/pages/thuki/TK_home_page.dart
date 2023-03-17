@@ -8,10 +8,12 @@ import 'package:intl/intl.dart';
 // import 'add_event.dart';
 import 'package:khoa_luan1/model/event.dart';
 import '../../list_event.dart';
+import '../../services/account_service.dart';
 import 'duyet_yeu_cau_huy_pb.dart';
 import 'duyet_event_list.dart';
 import '../../data/selectedDay.dart';
 import 'item_details_tk.dart';
+import '../../account_info.dart';
 
 class ThuKiHomePage extends StatefulWidget {
   const ThuKiHomePage({super.key});
@@ -28,7 +30,7 @@ class _ThuKiHomePageState extends State<ThuKiHomePage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   late Map<DateTime, List<Event>> _events;
   late String tenPhongBan;
-
+  var userID = '';
   int getHashCode(DateTime key) {
     return key.day * 1000000 + key.month * 10000 + key.year;
   }
@@ -40,9 +42,10 @@ class _ThuKiHomePageState extends State<ThuKiHomePage> {
       equals: isSameDay,
       hashCode: getHashCode,
     );
-    // final FirebaseAuth auth = FirebaseAuth.instance;
-    // final User? user = auth.currentUser;
-    // final uid = user?.uid;
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+    final uid = user?.uid;
+    userID = uid!;
     //print(uid);
     _calendarFormat = CalendarFormat.month;
     _focusedDay = DateTime.now();
@@ -117,7 +120,21 @@ class _ThuKiHomePageState extends State<ThuKiHomePage> {
               _loadFirestoreEvents();
             },
             icon: Icon(
-              Icons.logout,
+              Icons.event_available,
+            ),
+          ),
+          IconButton(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AccountInfor(userIDString: userID),
+                ),
+              );
+              _loadFirestoreEvents();
+            },
+            icon: Icon(
+              Icons.account_box,
             ),
           ),
           // IconButton(
@@ -281,6 +298,9 @@ class _ThuKiHomePageState extends State<ThuKiHomePage> {
     // await FirebaseFirestore.instance.terminate();
     // await FirebaseFirestore.instance.clearPersistence();
     // FirebaseFirestore.instance.settings=Settings(persistenceEnabled: false);
+    // account.tai_khoan = '';
+    // account.mat_khau = '';
+    clearUserCredentials();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

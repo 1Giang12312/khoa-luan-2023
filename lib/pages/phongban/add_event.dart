@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,8 +7,17 @@ import 'package:flutter/material.dart';
 import 'dart:core';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/pages/phongban/PB_home_page.dart';
+import 'package:khoa_luan1/services/upload_filepdf.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
+
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_document_picker/flutter_document_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:path/path.dart' as path;
+
+import 'dart:math';
+import 'dart:convert';
 
 class AddEvent extends StatefulWidget {
   // final DateTime firstDate;
@@ -57,7 +67,10 @@ class _AddEventState extends State<AddEvent> {
   final _tieu_deController = TextEditingController();
   final _dia_diemController = TextEditingController();
   //late  DateTime now = DateTime.now();
-
+  //tải lên file pdf
+  String fileName = '';
+  bool isfileNameExsited = false;
+  File? file = null;
   // Định dạng năm-tháng-ngày
 
   final thoi_gian_cong_viec_max = 240; //phut
@@ -65,14 +78,19 @@ class _AddEventState extends State<AddEvent> {
   var _app_Password = '';
   var _ten_PB = '';
   var _email_TK = '';
+  var userID = '';
+  var tenFilePDF = '';
+  var ranDomTenFilePDF = '';
   @override
   void initState() {
     super.initState();
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
+    userID = uid!;
     print(uid);
     getName();
+
     // print(_email_PB);
     // print(_app_Password);
     // DateTime _formattedNgaydx = DateTime.parse(_ngay_de_xuat.text);
@@ -92,10 +110,14 @@ class _AddEventState extends State<AddEvent> {
     final thoiGiancv = _thoi_gian_cvController.text;
     final tieuDe = _tieu_deController.text;
     final diadiem = _dia_diemController.text;
+    if (fileName == '') {
+      tenFilePDF = '';
+    } else {
+      tenFilePDF = ranDomTenFilePDF;
+    }
     // DateTime _formattedNgaydx = DateTime.parse(_ngay_de_xuat.text);
     // //_ngay_de_xuat_formatted = DateFormat.yMEd();
     // String formattedDate = DateFormat('yyyy-MM-dd').format(_formattedNgaydx);
-
     // print(_formattedNgaydx);
     // if (tenCongViec.isEmpty || thoiGiancv.isEmpty || tieuDe.isEmpty) {
     //   return ;
@@ -104,11 +126,7 @@ class _AddEventState extends State<AddEvent> {
 
     if (_formkey.currentState!.validate()) {
       try {
-        await FirebaseFirestore.instance
-            // .collection('tai_khoan')
-            // .doc(uid)
-            .collection('cong_viec')
-            .add({
+        await FirebaseFirestore.instance.collection('cong_viec').add({
           "gd_huy": false,
           "ngay_gio_bat_dau": Timestamp.fromDate(DateTime.now()),
           "ngay_post": Timestamp.fromDate(DateTime.now()),
@@ -125,9 +143,13 @@ class _AddEventState extends State<AddEvent> {
           "ngay_toi_thieu":
               Timestamp.fromDate(DateTime.parse(_ngay_de_xuat.text)),
           "ngay_gio_ket_thuc": Timestamp.fromDate(DateTime.now()),
-          "dia_diem": diadiem
+          "dia_diem": diadiem,
+          "file_pdf": tenFilePDF
         });
         if (mounted) {
+          if (file != null) {
+            firebase_storage.UploadTask? task = await uploadFile(file!);
+          }
           sendMail();
           Navigator.pop<bool>(context, true);
 
@@ -170,40 +192,6 @@ class _AddEventState extends State<AddEvent> {
     //print(tenPB);
   }
 
-  // Future<void> sendGmail() async {
-  //   try {
-  //     var userEmail = _email_PB;
-  //     print('-Tiêu đề công việc: ' +
-  //         _tieu_deController.text +
-  //         '\n' +
-  //         '-Tên(chi tiết) công việc: ' +
-  //         _ten_cong_viecController.text +
-  //         '\n' +
-  //         '-Thời gian diễn ra: ' +
-  //         _thoi_gian_cvController.text +
-  //         '\n' +
-  //         '-Địa điểm: ' +
-  //         _dia_diemComtroller.text +
-  //         '\n' +
-  //         '-Ngày đề xuất: ' +
-  //         _ngay_de_xuat.text +
-  //         '\n' +
-  //         _ten_PB +
-  //         userEmail +
-  //         _app_Password);
-  //     var message = Message();
-  //     message.subject = 'Phòng ban' + ' thêm công việc mới';
-  //     message.text = '-Tiêu đề công việc: ';
-  //     message.from = Address(userEmail.toString());
-  //     message.recipients.add('vtgiang_20pm@student.agu.edu.vn');
-  //     var smtSever = gmailSaslXoauth2(userEmail, 'bkgmulqfkdnztsfe');
-  //     send(message, smtSever);
-  //     print('email sended');
-  //   } catch (e) {
-  //     print('${e.toString()}');
-  //   }
-  // }
-
   void sendMail() async {
     var userEmail = _email_PB;
     final smtpServer = gmail(_email_PB.toString(), _app_Password);
@@ -228,117 +216,39 @@ class _AddEventState extends State<AddEvent> {
     }
   }
 
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: const Text("Thêm công việc")),
-//       body: ListView(
-//         padding: const EdgeInsets.all(16.0),
-//         children: [
-//           TextFormField(
-//             controller: _tieu_deController,
-//             maxLines: 1,
-//             decoration: InputDecoration(
-//                 enabledBorder: const OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.white),
-//                 ),
-//                 focusedBorder: OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.grey.shade400),
-//                 ),
-//                 fillColor: Colors.grey.shade200,
-//                 filled: true,
-//                 hintText: 'Tiêu đề',
-//                 hintStyle: TextStyle(color: Colors.grey[400])),
-//             validator: (value) {
-//               if (value!.length == 0) {
-//                 return "Tiêu đề không được để trống";
-//               } else {
-//                 return null;
-//               }
-//             },
-//             onSaved: (value) {
-//               _tieu_deController.text = value!;
-//             },
-//             keyboardType: TextInputType.emailAddress,
-//           ),
-//           SizedBox(
-//             height: 10,
-//           ),
-//           TextFormField(
-//             controller: _ten_cong_viecController,
-//             maxLines: 3,
-//             decoration: InputDecoration(
-//                 enabledBorder: const OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.white),
-//                 ),
-//                 focusedBorder: OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.grey.shade400),
-//                 ),
-//                 fillColor: Colors.grey.shade200,
-//                 filled: true,
-//                 hintText: 'Tên công việc',
-//                 hintStyle: TextStyle(color: Colors.grey[400])),
-//             validator: (value) {
-//               if (value!.length == 0) {
-//                 return "Tiêu đề không được để trống";
-//               } else {
-//                 return null;
-//               }
-//             },
-//             onSaved: (value) {
-//               _tieu_deController.text = value!;
-//             },
-//             keyboardType: TextInputType.emailAddress,
-//           ),
-//           SizedBox(
-//             height: 10,
-//           ),
-//           TextFormField(
-//             controller: _thoi_gian_cvController,
-//             maxLines: 1,
-//             decoration: InputDecoration(
-//                 enabledBorder: const OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.white),
-//                 ),
-//                 focusedBorder: OutlineInputBorder(
-//                   borderSide: BorderSide(color: Colors.grey.shade400),
-//                 ),
-//                 fillColor: Colors.grey.shade200,
-//                 filled: true,
-//                 hintText: 'Thời gian dự kiến (phút)',
-//                 hintStyle: TextStyle(color: Colors.grey[400])),
-//             validator: (value) {
-//               if (value!.length == 0) {
-//                 return "Tiêu đề không được để trống";
-//               } else {
-//                 return null;
-//               }
-//             },
-//             onSaved: (value) {
-//               _tieu_deController.text = value!;
-//             },
-//             keyboardType: TextInputType.emailAddress,
-//           ),
-//           SizedBox(
-//             height: 10,
-//           ),
-//           ElevatedButton(
-//             style: ElevatedButton.styleFrom(
-//               padding: EdgeInsets.symmetric(horizontal: 32, vertical: 8),
-//             ),
-//             onPressed: () {
-//               _addEvent();
-//             },
-//             child: const Text(
-//               "Lưu",
-//               style: TextStyle(fontSize: 20),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
+  Future<firebase_storage.UploadTask?> uploadFile(File file) async {
+    //var luuTenFilePDF = tenFilePDF;
+    if (file == null || tenFilePDF == fileName + '_' + userID + '_') {
+      print('no picked file');
+      return null;
+    }
+
+    firebase_storage.UploadTask uploadTask;
+
+    // Create a Reference to the file
+    firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+        .ref()
+        .child('pdf_files')
+        .child('/${tenFilePDF}');
+
+    final metadata = firebase_storage.SettableMetadata(
+        contentType: 'file/pdf',
+        customMetadata: {'picked-file-path': file.path});
+    print("Uploading..!");
+
+    uploadTask = ref.putData(await file.readAsBytes(), metadata);
+
+    print("done..!");
+    return Future.value(uploadTask);
+  }
+
+  String getRandString(int len, String uid, String tenFile) {
+    var random = Random.secure();
+    var values = List<int>.generate(len, (i) => random.nextInt(255));
+    var base64UrlEncodeString = base64UrlEncode(values);
+    return uid + '/' + tenFile + '_)()(_' + base64UrlEncodeString;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -515,17 +425,6 @@ class _AddEventState extends State<AddEvent> {
                       SizedBox(
                         height: 20,
                       ),
-                      // InputDatePickerFormField(
-                      //   firstDate: widget.firstDate,
-                      //   lastDate: widget.lastDate,
-                      //   initialDate: _selectedDate,
-                      //   onDateSubmitted: (date) {
-                      //     print(date);
-                      //     setState(() {
-                      //       _selectedDate = date;
-                      //     });
-                      //   },
-                      // ),
                       Wrap(
                         children: [
                           TextFormField(
@@ -562,6 +461,79 @@ class _AddEventState extends State<AddEvent> {
                               _ngay_de_xuat.text = value!;
                             },
                           ),
+                        ],
+                      ),
+                      SizedBox(
+                        height: 20,
+                      ),
+                      Wrap(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 8,
+                                child: MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  onPressed: () async {
+                                    final path = await FlutterDocumentPicker
+                                        .openDocument();
+                                    if (path == null) {
+                                      print('path null');
+                                    } else {
+                                      print(path);
+                                      file = File(path);
+                                      fileName = file!.path.split('/').last;
+
+                                      setState(() {
+                                        isfileNameExsited = true;
+                                        print('file name:' + fileName);
+                                        ranDomTenFilePDF = getRandString(
+                                            fileName.length, userID, fileName);
+                                        print(
+                                            'random name:' + ranDomTenFilePDF);
+                                      });
+                                    }
+                                  },
+                                  child: Text(
+                                    isfileNameExsited
+                                        ? fileName
+                                        : 'Chọn file pdf',
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  child: Icon(Icons.close_sharp),
+                                  onPressed: () async {
+                                    //clear fileName setState
+                                    setState(() {
+                                      file = File('');
+                                      fileName = '';
+                                      isfileNameExsited = false;
+                                      print(fileName);
+                                      print(getRandString(
+                                          fileName.length, fileName, userID));
+                                      print(isfileNameExsited.toString());
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
                         ],
                       ),
                       Row(

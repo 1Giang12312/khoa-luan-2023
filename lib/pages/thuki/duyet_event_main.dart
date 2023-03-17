@@ -1,8 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as local_notifications;
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
+import '../../login.dart';
 import 'duyet_event_list.dart';
 import '../../data/selectedDay.dart';
 import 'TK_home_page.dart';
@@ -71,9 +76,12 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   var _ten_tk = '';
   var _ngay_post = '';
   var _ngay_toi_thieu = '';
+  local_notifications.FlutterLocalNotificationsPlugin
+      flutterLocalNotificationsPlugin =
+      local_notifications.FlutterLocalNotificationsPlugin();
   //final daytimeSang = DateTime(now.year, now.month, now.day, 23, 59, 59);
   //Timestamp sang7h=Timestamp.fromDate(startOfToday);
-  Timestamp _xet_trang_thai_ts = Timestamp.fromDate(now);
+  //Timestamp _xet_trang_thai_ts = Timestamp.fromDate(now);
   void _selectDatePicker() {
     showDatePicker(
             context: context,
@@ -92,8 +100,64 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     });
   }
 
+  initInfo() async {
+    //local_notifications
+    final android = local_notifications.AndroidInitializationSettings(
+        '@mipmap/ic_launcher');
+    final iOS = local_notifications.IOSInitializationSettings();
+    final settings =
+        local_notifications.InitializationSettings(android: android, iOS: iOS);
+    flutterLocalNotificationsPlugin.initialize(settings,
+        onSelectNotification: (payload) async {
+      try {
+        if (payload != null && payload.isNotEmpty) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (BuildContext context) {
+            return LoginPage();
+          }));
+        }
+      } catch (e) {
+        print(e);
+      }
+      return;
+      // onNotification.add(payload);
+    });
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('--onMessasge--');
+      print(
+          'on message: ${message.notification?.title}/${message.notification?.body}');
+      local_notifications.BigTextStyleInformation bigTextStyleInformation =
+          local_notifications.BigTextStyleInformation(
+        message.notification!.body.toString(),
+        htmlFormatBigText: true,
+        contentTitle: message.notification!.title.toString(),
+        htmlFormatContentTitle: true,
+      );
+      local_notifications.AndroidNotificationDetails
+          andoroidPlatformChannelSpecifics =
+          local_notifications.AndroidNotificationDetails(
+        'tk_duet', 'tk_duyet',
+        importance: local_notifications.Importance.high,
+        styleInformation: bigTextStyleInformation,
+        priority: local_notifications.Priority.high,
+        // playSound: true,
+        // sound: local_notifications.RawResourceAndroidNotificationSound(
+        //     'notification'
+        //     )
+      );
+      local_notifications.NotificationDetails platformChannelSpecifics =
+          local_notifications.NotificationDetails(
+              android: andoroidPlatformChannelSpecifics,
+              iOS: const local_notifications.IOSNotificationDetails());
+      await flutterLocalNotificationsPlugin.show(1, message.notification?.title,
+          message.notification?.body, platformChannelSpecifics,
+          payload: message.data['title']);
+    });
+  }
+
   @override
   void initState() {
+    initInfo();
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
@@ -108,7 +172,7 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     print(_gio_bat_dauController.text);
     print(currentDate.toString());
     _loadData();
-    _doi_trang_thai_cong_viec(_xet_trang_thai_ts);
+    // _doi_trang_thai_cong_viec(_xet_trang_thai_ts);
     print(startOfToday.toString() + endOfToday.toString());
     print(uid);
     getName();
@@ -211,21 +275,21 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     }
   }
 
-  void _doi_trang_thai_cong_viec(Timestamp _datetime_now) async {
-    final eventsRef = FirebaseFirestore.instance.collection('cong_viec');
-    final query = eventsRef
-        .where('ngay_gio_ket_thuc', isLessThanOrEqualTo: _datetime_now)
-        .where('tk_duyet', isEqualTo: true);
+  // void _doi_trang_thai_cong_viec(Timestamp _datetime_now) async {
+  //   final eventsRef = FirebaseFirestore.instance.collection('cong_viec');
+  //   final query = eventsRef
+  //       .where('ngay_gio_ket_thuc', isLessThanOrEqualTo: _datetime_now)
+  //       .where('tk_duyet', isEqualTo: true);
 
-    final snapshot = await query.get();
-    final docs = snapshot.docs;
+  //   final snapshot = await query.get();
+  //   final docs = snapshot.docs;
 
-    for (final doc in docs) {
-      final ref = doc.reference;
-      await ref.update({'trang_thai': false});
-    }
-    print('doi trang thai cong viec thanh cong');
-  }
+  //   for (final doc in docs) {
+  //     final ref = doc.reference;
+  //     await ref.update({'trang_thai': false});
+  //   }
+  //   print('doi trang thai cong viec thanh cong');
+  // }
 
   void _loadData() async {
     final document = await FirebaseFirestore.instance

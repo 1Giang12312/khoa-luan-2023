@@ -6,6 +6,7 @@ import 'package:flutter/src/widgets/placeholder.dart';
 import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/model/details_item.dart';
+import '../thuki/item_details_tk.dart';
 import 'item_details_giam_doc.dart';
 
 class ToDoListTuan extends StatefulWidget {
@@ -93,7 +94,7 @@ class _ToDoListTuanState extends State<ToDoListTuan> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  ItemDetailsGiamDoc(documentSnapshot.id),
+                                  ItemDetailsThuKi(documentSnapshot.id),
                             ),
                           );
                           print(documentSnapshot.id);

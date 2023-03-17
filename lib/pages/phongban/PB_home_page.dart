@@ -6,12 +6,14 @@ import '../../login.dart';
 import 'dart:collection';
 import 'package:table_calendar/table_calendar.dart';
 
+import '../../services/account_service.dart';
 import 'add_event.dart';
 import 'package:khoa_luan1/model/event.dart';
 import '../../list_event.dart';
 import 'list_cong_viec.dart';
 import 'to_do_list_ngay.dart';
 import 'to_do_list_tuan.dart';
+import '../../account_info.dart';
 
 class PhongBanHomePage extends StatefulWidget {
   const PhongBanHomePage({super.key});
@@ -112,7 +114,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
               );
             },
             icon: Icon(
-              Icons.logout,
+              Icons.schedule_send_rounded,
             ),
           ),
           IconButton(
@@ -125,7 +127,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
               );
             },
             icon: Icon(
-              Icons.logout,
+              Icons.schedule_outlined,
             ),
           ),
           IconButton(
@@ -138,7 +140,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
               );
             },
             icon: Icon(
-              Icons.logout,
+              Icons.calendar_today,
             ),
           ),
         ],
@@ -263,9 +265,9 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
   Future<void> logout(BuildContext context) async {
     CircularProgressIndicator();
     await FirebaseAuth.instance.signOut();
-    // await FirebaseFirestore.instance.terminate();
-    // await FirebaseFirestore.instance.clearPersistence();
-    // FirebaseFirestore.instance.settings=Settings(persistenceEnabled: false);
+    // account.tai_khoan = '';
+    // account.mat_khau = '';
+    clearUserCredentials();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

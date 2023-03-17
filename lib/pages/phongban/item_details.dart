@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_pdfview/flutter_pdfview.dart';
 // import 'package:flutterfiredemo/edit_item.dart';
 import 'package:intl/intl.dart';
+import '../../services/view_file_pdf.dart';
 import 'edit_item.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
@@ -38,6 +41,10 @@ class _ItemDetailsState extends State<ItemDetails> {
   var _ten_cong_viec = '';
   var _thoi_gian_dien_ra = '';
   var _dia_diem = '';
+  String reFileName = '';
+  String fileName = '';
+  bool isfileNameExsited = false;
+  File? file = null;
   @override
   void initState() {
     super.initState();
@@ -159,7 +166,14 @@ class _ItemDetailsState extends State<ItemDetails> {
             // String formattedDayEnd =
             //     DateFormat('dd/MM/yyyy').format(gio_ket_thuc);
             String formattedTimeEnd = DateFormat('HH:mm').format(gio_ket_thuc);
-
+            bool isExsitFilePDF;
+            if (data['file_pdf'].toString() == '') {
+              isExsitFilePDF = false;
+            } else {
+              isExsitFilePDF = true;
+            }
+            reFileName = data['file_pdf'].split('/')[1];
+            fileName = reFileName.split('_)()(_').first;
 //             // chuyển đổi timestamp thành DateTime
 //             DateTime date = timestamp.toDate();
 //String formattedTime = DateFormat('HH:mm').format(ngay_bat_dau);
@@ -298,9 +312,9 @@ class _ItemDetailsState extends State<ItemDetails> {
                             ]),
                             Wrap(children: [
                               Text(
-                                data['pb_huy']
-                                    ? 'Đã đăng kí hủy và đang chờ xét duyệt'
-                                    : '',
+                                isExsitFilePDF
+                                    ? 'Có tệp đính kèm'
+                                    : 'Không có tệp đính kèm',
                                 style: TextStyle(
                                   color: Color.fromARGB(
                                       255, 0, 0, 0), // màu sắc của văn bản
@@ -310,6 +324,52 @@ class _ItemDetailsState extends State<ItemDetails> {
                                     .left, // căn chỉnh văn bản (giữa, trái, phải)
                               )
                             ]),
+                            Visibility(
+                              visible: isExsitFilePDF, // bool
+                              child: Wrap(children: [
+                                MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  onPressed: () async {
+                                    print(data['file_pdf']);
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => PDFScreen(
+                                                  url: data['file_pdf'],
+                                                )));
+                                  },
+                                  child: Text(
+                                    fileName,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  color: Colors.white,
+                                )
+                              ]),
+                            ),
+                            Visibility(
+                              visible: data['pb_huy'], // bool
+                              child: Wrap(children: [
+                                Text(
+                                  data['pb_huy']
+                                      ? 'Đã đăng kí hủy và đang chờ xét duyệt'
+                                      : '',
+                                  style: TextStyle(
+                                    color: Color.fromARGB(
+                                        255, 0, 0, 0), // màu sắc của văn bản
+                                    fontSize: 20, // kích thước của văn bản
+                                  ),
+                                  textAlign: TextAlign
+                                      .left, // căn chỉnh văn bản (giữa, trái, phải)
+                                )
+                              ]),
+                              // widget to show/hide
+                            ),
                             Wrap(
                               children: [
                                 Text(
@@ -433,6 +493,7 @@ class _ItemDetailsState extends State<ItemDetails> {
                                                     child: Text(
                                                       'Bạn không thể sửa do thư kí đã duyệt',
                                                       style: const TextStyle(
+                                                          fontSize: 20,
                                                           color: Colors.white),
                                                     ),
                                                   ),
@@ -440,13 +501,14 @@ class _ItemDetailsState extends State<ItemDetails> {
                                               },
                                             );
                                           },
+                                          color: Colors.blue[900],
                                           child: Text(
                                             "Sửa",
                                             style: TextStyle(
+                                              color: Colors.white,
                                               fontSize: 20,
                                             ),
                                           ),
-                                          color: Colors.white,
                                         )
                                       : MaterialButton(
                                           shape: RoundedRectangleBorder(
@@ -468,13 +530,14 @@ class _ItemDetailsState extends State<ItemDetails> {
                                             //   _loadFirestoreEvents();
                                             // }
                                           },
+                                          color: Colors.blue[900],
                                           child: Text(
                                             "Sửa",
                                             style: TextStyle(
+                                              color: Colors.white,
                                               fontSize: 20,
                                             ),
                                           ),
-                                          color: Colors.white,
                                         )
                                 ],
                               ),

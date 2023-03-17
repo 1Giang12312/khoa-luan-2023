@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../thuki/item_details_tk.dart';
 import 'item_details_giam_doc.dart';
 import '../../login.dart';
 import 'dart:collection';
@@ -12,6 +14,10 @@ import 'to_do_list_ngay.dart';
 import 'to_do_list_tuan.dart';
 import '../../data/selectedDay.dart';
 import '../../list_event.dart';
+import '../../account_info.dart';
+
+import '../../services/account_service.dart';
+import '../../services/account_service.dart';
 
 class GiamDocHomePage extends StatefulWidget {
   const GiamDocHomePage({super.key});
@@ -28,7 +34,7 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   late Map<DateTime, List<Event>> _events;
   late String tenPhongBan;
-
+  var userID = '';
   int getHashCode(DateTime key) {
     return key.day * 1000000 + key.month * 10000 + key.year;
   }
@@ -44,6 +50,7 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
+    userID = uid!;
     print(uid);
     _firstDay = DateTime.now().subtract(const Duration(days: 1000));
     _lastDay = DateTime.now().add(const Duration(days: 1000));
@@ -111,7 +118,7 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
               );
             },
             icon: Icon(
-              Icons.logout,
+              Icons.calendar_today_outlined,
             ),
           ),
           IconButton(
@@ -124,48 +131,23 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
               );
             },
             icon: Icon(
-              Icons.logout,
+              Icons.calendar_view_week,
             ),
           ),
-          // IconButton(
-          //   onPressed: () async {
-          //     final result = await Navigator.push<bool>(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (_) => ToDoList(),
-          //       ),
-          //     );
-          //   },
-          //   icon: Icon(
-          //     Icons.logout,
-          //   ),
-          // ),
-          // IconButton(
-          //   onPressed: () async {
-          //     final result = await Navigator.push<bool>(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (_) => ToDoListTuan(),
-          //       ),
-          //     );
-          //   },
-          //   icon: Icon(
-          //     Icons.logout,
-          //   ),
-          // ),
-          // IconButton(
-          //   onPressed: () async {
-          //     final result = await Navigator.push<bool>(
-          //       context,
-          //       MaterialPageRoute(
-          //         builder: (_) => ListCongViec(),
-          //       ),
-          //     );
-          //   },
-          //   icon: Icon(
-          //     Icons.logout,
-          //   ),
-          // ),
+          IconButton(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => AccountInfor(userIDString: userID),
+                ),
+              );
+              _loadFirestoreEvents();
+            },
+            icon: Icon(
+              Icons.account_box,
+            ),
+          ),
         ],
       ),
       body: SingleChildScrollView(
@@ -247,7 +229,7 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
                     final res = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ItemDetailsGiamDoc(event.id),
+                        builder: (_) => ItemDetailsThuKi(event.id),
                       ),
                     );
                     if (res ?? false) {
@@ -274,6 +256,10 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
     // await FirebaseFirestore.instance.terminate();
     // await FirebaseFirestore.instance.clearPersistence();
     // FirebaseFirestore.instance.settings=Settings(persistenceEnabled: false);
+    // writeAccountIntoLocalFile('', '');
+    // readFileAccount();
+
+    clearUserCredentials();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(

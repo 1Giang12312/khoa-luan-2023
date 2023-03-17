@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 // import 'package:flutterfiredemo/edit_item.dart';
 import 'package:intl/intl.dart';
 import '../../data/selectedDay.dart';
+import '../../services/view_file_pdf.dart';
 import 'duyet_event_main.dart';
 
 class DuyetEventDetail extends StatefulWidget {
@@ -25,6 +26,7 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
   late DateTime _firstDay;
   late DateTime _lastDay;
   late Map data;
+  String reFileName = '';
   var tenPB = '';
   @override
   void initState() {
@@ -78,6 +80,12 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
             String formattedTime = DateFormat('HH:mm').format(ngay_bat_dau);
             int thoi_gian_cv = int.parse(data['thoi_gian_cv']);
             gio_ket_thuc = ngay_bat_dau.add(Duration(minutes: thoi_gian_cv));
+            bool isExsitFilePDF = false;
+            if (data['file_pdf'] != '') {
+              isExsitFilePDF = true;
+            }
+            reFileName = data['file_pdf'].split('/')[1];
+            String fileName = reFileName.split('_)()(_').first;
             // String formattedDayEnd =
             //     DateFormat('dd/MM/yyyy').format(gio_ket_thuc);
             String formattedTimeEnd = DateFormat('HH:mm').format(gio_ket_thuc);
@@ -91,8 +99,9 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                       // height: MediaQuery.of(context).size.height * 0.5,
                       child: SingleChildScrollView(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
+                            Wrap(
                               children: [
                                 Text(
                                   textAlign: TextAlign.left,
@@ -117,7 +126,31 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                     ),
                                   ),
                                 ]),
-                            Row(
+                            Wrap(children: [
+                              Text(
+                                'Địa điểm: ${data['dia_diem']}',
+                                style: TextStyle(
+                                  color: Color.fromARGB(
+                                      255, 0, 0, 0), // màu sắc của văn bản
+                                  fontSize: 20, // kích thước của văn bản
+                                ),
+                                textAlign: TextAlign
+                                    .left, // căn chỉnh văn bản (giữa, trái, phải)
+                              )
+                            ]),
+                            Wrap(children: [
+                              Text(
+                                data['tk_duyet']
+                                    ? 'Ngày bắt đầu ${formattedDay} lúc ${formattedTime} đến ${formattedTimeEnd}'
+                                    : 'Ngày giờ: đang chờ duyệt..',
+                                style: TextStyle(
+                                  color: Color.fromARGB(
+                                      255, 0, 0, 0), // màu sắc của văn bản
+                                  fontSize: 20, // kích thước của văn bản
+                                ),
+                              )
+                            ]),
+                            Wrap(
                               children: [
                                 Text(
                                   'Ngày đăng công việc: ${ngay_post_string}',
@@ -131,7 +164,7 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                 ),
                               ],
                             ),
-                            Row(children: [
+                            Wrap(children: [
                               Text(
                                 'Thời gian dự kiến diễn ra: ${data['thoi_gian_cv']} phút',
                                 style: TextStyle(
@@ -143,7 +176,7 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                     .left, // căn chỉnh văn bản (giữa, trái, phải)
                               ),
                             ]),
-                            Row(children: [
+                            Wrap(children: [
                               Text('Độ ưu tiên: ${data['do_uu_tien']}',
                                   style: TextStyle(
                                     color: Color.fromARGB(
@@ -151,7 +184,7 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                     fontSize: 20, // kích thước của văn bản
                                   )),
                             ]),
-                            Row(children: [
+                            Wrap(children: [
                               Text('Tên phòng ban: ' + tenPB,
                                   style: TextStyle(
                                     color: Color.fromARGB(
@@ -159,7 +192,7 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                     fontSize: 20, // kích thước của văn bản
                                   ))
                             ]),
-                            Row(children: [
+                            Wrap(children: [
                               Text(
                                 'Ngày tối thiểu: ' + ngay_toi_thieu_string,
                                 style: TextStyle(
@@ -171,6 +204,62 @@ class _DuyetEventDetailState extends State<DuyetEventDetail> {
                                     .left, // căn chỉnh văn bản (giữa, trái, phải)
                               ),
                             ]),
+                            Wrap(children: [
+                              Text(
+                                data['tk_duyet']
+                                    ? 'Thư kí đã duyệt!'
+                                    : 'Đang chờ duyệt...',
+                                style: TextStyle(
+                                  color: Color.fromARGB(
+                                      255, 0, 0, 0), // màu sắc của văn bản
+                                  fontSize: 20, // kích thước của văn bản
+                                ),
+                                textAlign: TextAlign
+                                    .left, // căn chỉnh văn bản (giữa, trái, phải)
+                              )
+                            ]),
+                            Wrap(children: [
+                              Text(
+                                isExsitFilePDF
+                                    ? 'Có tệp đính kèm'
+                                    : 'Không có tệp đính kèm',
+                                style: TextStyle(
+                                  color: Color.fromARGB(
+                                      255, 0, 0, 0), // màu sắc của văn bản
+                                  fontSize: 20, // kích thước của văn bản
+                                ),
+                                textAlign: TextAlign
+                                    .left, // căn chỉnh văn bản (giữa, trái, phải)
+                              )
+                            ]),
+                            Visibility(
+                              visible: isExsitFilePDF, // bool
+                              child: Wrap(children: [
+                                MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  onPressed: () async {
+                                    print(data['file_pdf']);
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                            builder: (context) => PDFScreen(
+                                                  url: data['file_pdf'],
+                                                )));
+                                  },
+                                  child: Text(
+                                    fileName,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  color: Colors.white,
+                                )
+                              ]),
+                            ),
                             Row(
                               children: [
                                 MaterialButton(

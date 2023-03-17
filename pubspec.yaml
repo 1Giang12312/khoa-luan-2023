@@ -42,6 +42,17 @@ dependencies:
   firebase_messaging: ^14.2.5
   http: ^0.13.4
 
+  firebase_analytics: ^10.0.1
+  rxdart: ^0.26.0
+  flutter_native_timezone: ^1.1.0
+  shared_preferences: ^2.0.18
+
+  firebase_storage: ^11.0.15
+  flutter_document_picker: ^5.1.0
+  flutter_pdfview: ^1.0.5
+  path: ^1.8.0
+  flutter_cache_manager: ^3.3.0
+ 
 dev_dependencies:
   flutter_test:
     sdk: flutter

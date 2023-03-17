@@ -1,13 +1,20 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_document_picker/flutter_document_picker.dart';
 import 'dart:core';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/pages/phongban/PB_home_page.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
+import 'package:flutter_document_picker/flutter_document_picker.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:path/path.dart' as path;
 
 class EditItem extends StatefulWidget {
   String itemId;
@@ -43,12 +50,23 @@ class _EditItemState extends State<EditItem> {
   var _thoi_gianCV = '';
   var _dia_diem = '';
   var _do_uu_tien = '';
+
+  var userID = '';
+  var tenFilePDF = '';
+  var ranDomTenFilePDF = '';
+
+  String fileName = '';
+  bool isfileNameExsited = false;
+  File? file = null;
+  String fileNameDefault = 'Chọn file pdf';
+  String refileNamDefault = '';
   @override
   void initState() {
     super.initState();
-    // final FirebaseAuth auth = FirebaseAuth.instance;
-    // final User? user = auth.currentUser;
-    // final uid = user?.uid;
+    final FirebaseAuth auth = FirebaseAuth.instance;
+    final User? user = auth.currentUser;
+    final uid = user?.uid;
+    userID = uid!;
     final _reference =
         FirebaseFirestore.instance.collection('cong_viec').doc(widget.itemId);
     _futureData = _reference.get();
@@ -74,6 +92,47 @@ class _EditItemState extends State<EditItem> {
     });
   }
 
+  String getRandString(int len, String uid, String tenFile) {
+    var random = Random.secure();
+    var values = List<int>.generate(len, (i) => random.nextInt(255));
+    var base64UrlEncodeString = base64UrlEncode(values);
+    return uid + '/' + tenFile + '_)()(_' + base64UrlEncodeString;
+  }
+
+  Future<void> xoaFilePDF(String tenFilePDFXoa) async {
+    final FirebaseStorage storage = FirebaseStorage.instance;
+    final Reference reference =
+        storage.ref().child('pdf_files').child('/${tenFilePDFXoa}');
+    await reference.delete();
+  }
+
+  Future<firebase_storage.UploadTask?> uploadFile(File file) async {
+    //var luuTenFilePDF = tenFilePDF;
+    if (file == null || tenFilePDF == fileName + '_' + userID + '_') {
+      print('no picked file');
+      return null;
+    }
+
+    firebase_storage.UploadTask uploadTask;
+
+    // Create a Reference to the file
+
+    firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
+        .ref()
+        .child('pdf_files')
+        .child('/${tenFilePDF}');
+
+    final metadata = firebase_storage.SettableMetadata(
+        contentType: 'file/pdf',
+        customMetadata: {'picked-file-path': file.path});
+    print("Uploading..!");
+
+    uploadTask = ref.putData(await file.readAsBytes(), metadata);
+
+    print("done..!");
+    return Future.value(uploadTask);
+  }
+
   void _editItem() async {
     final DateTime now;
     final FirebaseAuth auth = FirebaseAuth.instance;
@@ -83,6 +142,12 @@ class _EditItemState extends State<EditItem> {
     final thoiGiancv = _thoi_gian_cvController.text;
     final tieuDe = _tieu_deController.text;
     final diaDiem = _dia_diemController.text;
+
+    if (fileName == '') {
+      tenFilePDF = '';
+    } else {
+      tenFilePDF = ranDomTenFilePDF;
+    }
     if (_formkey.currentState!.validate()) {
       try {
         await FirebaseFirestore.instance
@@ -98,20 +163,27 @@ class _EditItemState extends State<EditItem> {
               Timestamp.fromDate(DateTime.parse(_ngay_de_xuat.text)),
           "do_uu_tien": rool,
           "dia_diem": diaDiem,
+          "file_pdf": tenFilePDF
         });
 
         if (mounted) {
+          //nếu file pdf bị xóa => xóa file pdf trên storage + update file_pdf = ''
+          //nếu file pdf bị sửa mới =? upload file mới + update file_pdf + xóa file cũ
+          //nếu bình thường lưu lại đường dẫn cũ
+          if (fileName != '') {
+            firebase_storage.UploadTask? task = await uploadFile(file!);
+          }
           sendMail();
           Navigator.pop<bool>(context, true);
           Navigator.pop<bool>(context, true);
           print('sua thanh cong');
-          SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: const Text('Sửa công việc thành công'),
             action: SnackBarAction(
               label: 'Hủy',
               onPressed: () {},
             ),
-          );
+          ));
         }
       } catch (e) {
         print(e);
@@ -168,7 +240,11 @@ class _EditItemState extends State<EditItem> {
       _thoi_gian_cvController.text = data['thoi_gian_cv'];
       _dia_diemController.text = data['dia_diem'];
       _currentItemSelected = data['do_uu_tien'];
-
+      refileNamDefault = data['file_pdf'].split('/')[1];
+      fileNameDefault = refileNamDefault.split('_)()(_')[0];
+      if (fileNameDefault == '') {
+        fileNameDefault = 'Chọn file PDF';
+      }
       //load công việc cũ
       _tieu_de = data['tieu_de'];
       _ten_cong_viec = data['ten_cong_viec'];
@@ -303,7 +379,7 @@ class _EditItemState extends State<EditItem> {
                           }
                         },
                         onSaved: (value) {
-                          _tieu_deController.text = value!;
+                          _ten_cong_viecController.text = value!;
                         },
                       ),
                       SizedBox(
@@ -343,7 +419,7 @@ class _EditItemState extends State<EditItem> {
                           }
                         },
                         onSaved: (value) {
-                          _tieu_deController.text = value!;
+                          _thoi_gian_cvController.text = value!;
                         },
                       ),
                       SizedBox(
@@ -414,6 +490,78 @@ class _EditItemState extends State<EditItem> {
                         onSaved: (value) {
                           _ngay_de_xuat.text = value!;
                         },
+                      ),
+                      Wrap(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                flex: 8,
+                                child: MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  onPressed: () async {
+                                    final path = await FlutterDocumentPicker
+                                        .openDocument();
+                                    if (path == null) {
+                                      print('path null');
+                                    } else {
+                                      print('path:' + path);
+                                      file = File(path);
+                                      fileName = file!.path.split('/').last;
+
+                                      setState(() {
+                                        isfileNameExsited = true;
+                                        print('file name:' + fileName);
+                                        ranDomTenFilePDF = getRandString(
+                                            fileName.length, userID, fileName);
+                                        print(
+                                            'random name:' + ranDomTenFilePDF);
+                                      });
+                                    }
+                                  },
+                                  child: Text(
+                                    isfileNameExsited
+                                        ? fileName
+                                        : fileNameDefault,
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                    ),
+                                  ),
+                                  color: Colors.white,
+                                ),
+                              ),
+                              Expanded(
+                                flex: 2,
+                                child: MaterialButton(
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.all(
+                                          Radius.circular(20.0))),
+                                  elevation: 5.0,
+                                  height: 40,
+                                  child: Icon(Icons.close_sharp),
+                                  onPressed: () async {
+                                    //clear fileName setState
+                                    setState(() {
+                                      file = File('');
+                                      fileName = '';
+                                      fileNameDefault = 'Chọn file pdf';
+                                      isfileNameExsited = false;
+                                      print('file:' + file.toString());
+                                      print('fileName:' + fileName);
+                                      print(getRandString(
+                                          fileName.length, fileName, userID));
+                                      print(isfileNameExsited.toString());
+                                    });
+                                  },
+                                ),
+                              ),
+                            ],
+                          )
+                        ],
                       ),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

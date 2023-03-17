@@ -24,6 +24,9 @@ class _RegisterState extends State<Register> {
       new TextEditingController();
   final TextEditingController name = new TextEditingController();
   final TextEditingController emailController = new TextEditingController();
+  final TextEditingController sdtController = new TextEditingController();
+  final TextEditingController appPasswordController =
+      new TextEditingController();
   final bool trang_thai = true;
   bool _isObscure = true;
   bool _isObscure2 = true;
@@ -64,10 +67,7 @@ class _RegisterState extends State<Register> {
                           ),
                         ),
                         SizedBox(
-                          height: 10,
-                        ),
-                        SizedBox(
-                          height: 50,
+                          height: 35,
                         ),
                         TextFormField(
                           controller: emailController,
@@ -106,6 +106,36 @@ class _RegisterState extends State<Register> {
                           height: 20,
                         ),
                         TextFormField(
+                          controller: appPasswordController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            hintText: 'App password',
+                            enabled: true,
+                            contentPadding: const EdgeInsets.only(
+                                left: 14.0, bottom: 8.0, top: 8.0),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: new BorderSide(color: Colors.white),
+                              borderRadius: new BorderRadius.circular(20),
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: new BorderSide(color: Colors.white),
+                              borderRadius: new BorderRadius.circular(20),
+                            ),
+                          ),
+                          validator: (value) {
+                            if (value!.length == 0) {
+                              return "App password không được để trống!";
+                            } else {
+                              return null;
+                            }
+                          },
+                          onChanged: (value) {},
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        TextFormField(
                           controller: name,
                           decoration: InputDecoration(
                             filled: true,
@@ -131,7 +161,44 @@ class _RegisterState extends State<Register> {
                             }
                           },
                           onChanged: (value) {},
-                          keyboardType: TextInputType.emailAddress,
+                        ),
+                        SizedBox(
+                          height: 20,
+                        ),
+                        TextFormField(
+                          controller: sdtController,
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.white,
+                            hintText: 'Số điện thoại',
+                            enabled: true,
+                            contentPadding: const EdgeInsets.only(
+                                left: 14.0, bottom: 8.0, top: 8.0),
+                            focusedBorder: OutlineInputBorder(
+                              borderSide: new BorderSide(color: Colors.white),
+                              borderRadius: new BorderRadius.circular(20),
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: new BorderSide(color: Colors.white),
+                              borderRadius: new BorderRadius.circular(20),
+                            ),
+                          ),
+                          validator: (value) {
+                            RegExp regex = RegExp(r'^[0-9]+$');
+
+                            if (value!.length == 0) {
+                              return "Số điện thoại không được để trống!";
+                            }
+                            if (!regex.hasMatch(value)) {
+                              return ("Bạn phải nhập số!");
+                            }
+                            if (value!.length != 10) {
+                              return ('Bạn phải nhập 10 số');
+                            } else {
+                              return null;
+                            }
+                          },
+                          onChanged: (value) {},
                         ),
                         SizedBox(
                           height: 20,
@@ -378,7 +445,10 @@ class _RegisterState extends State<Register> {
       'email': emailController.text,
       'quyen_han': rool,
       'ten': name.text,
-      'trang_thai': trang_thai
+      'trang_thai': trang_thai,
+      'app_password': appPasswordController.text,
+      'so_dien_thoai': sdtController.text,
+      'FCNtoken': ''
     });
     Navigator.pushReplacement(
         context, MaterialPageRoute(builder: (context) => LoginPage()));
