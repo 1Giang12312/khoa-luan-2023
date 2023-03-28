@@ -3,6 +3,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:khoa_luan1/dashboard.dart';
 import 'package:rxdart/rxdart.dart';
 import 'pages/giamdoc/GD_home_page.dart';
 import 'pages/thuki/TK_home_page.dart';
@@ -15,9 +16,11 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'account_info.dart';
-
+import 'package:flutter_local_notifications/flutter_local_notifications.dart'
+    as local_notifications;
 import 'dart:async';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'data/UserID.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -41,11 +44,13 @@ class _LoginPageState extends State<LoginPage> {
   bool _rememberMe = true;
   late SharedPreferences _prefs;
   bool isThuKi = true;
+
   @override
   void initState() {
     super.initState();
     requestPermission();
     getToken();
+    initInfo();
     isLoggedIn().then((value) {
       if (value == true) {
         print('login tu dong');
@@ -54,6 +59,61 @@ class _LoginPageState extends State<LoginPage> {
         flutterLocalNotificationsPlugin.cancelAll();
         print('đã tắt tất cả thông báo hẹn lịch');
       }
+    });
+  }
+
+  initInfo() async {
+    //local_notifications
+    final android = local_notifications.AndroidInitializationSettings(
+        '@mipmap/ic_launcher');
+    final iOS = local_notifications.IOSInitializationSettings();
+    final settings =
+        local_notifications.InitializationSettings(android: android, iOS: iOS);
+    flutterLocalNotificationsPlugin.initialize(settings,
+        onSelectNotification: (payload) async {
+      try {
+        if (payload != null && payload.isNotEmpty) {
+          Navigator.push(context,
+              MaterialPageRoute(builder: (BuildContext context) {
+            return LoginPage();
+          }));
+        }
+      } catch (e) {
+        print(e);
+      }
+      return;
+      // onNotification.add(payload);
+    });
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+      print('--onMessasge--');
+      print(
+          'on message: ${message.notification?.title}/${message.notification?.body}');
+      local_notifications.BigTextStyleInformation bigTextStyleInformation =
+          local_notifications.BigTextStyleInformation(
+        message.notification!.body.toString(),
+        htmlFormatBigText: true,
+        contentTitle: message.notification!.title.toString(),
+        htmlFormatContentTitle: true,
+      );
+      local_notifications.AndroidNotificationDetails
+          andoroidPlatformChannelSpecifics =
+          local_notifications.AndroidNotificationDetails(
+        'tk_duyet', 'tk_duyet',
+        importance: local_notifications.Importance.high,
+        styleInformation: bigTextStyleInformation,
+        priority: local_notifications.Priority.high,
+        // playSound: true,
+        // sound: local_notifications.RawResourceAndroidNotificationSound(
+        //     'notification'
+        //     )
+      );
+      local_notifications.NotificationDetails platformChannelSpecifics =
+          local_notifications.NotificationDetails(
+              android: andoroidPlatformChannelSpecifics,
+              iOS: const local_notifications.IOSNotificationDetails());
+      await flutterLocalNotificationsPlugin.show(1, message.notification?.title,
+          message.notification?.body, platformChannelSpecifics,
+          payload: message.data['title']);
     });
   }
 
@@ -343,10 +403,11 @@ class _LoginPageState extends State<LoginPage> {
                             if (value!.length == 0) {
                               return "Email không được để trống";
                             }
-                            if (!RegExp("^[a-zA-Z0-9+_.-]+@agu.edu.vn")
-                                .hasMatch(value)) {
-                              return ("Hãy nhập mail agu");
-                            } else {
+                            // if (!RegExp("^[a-zA-Z0-9+_.-]+@agu.edu.vn")
+                            //     .hasMatch(value)) {
+                            //   return ("Hãy nhập mail agu");
+                            // }
+                            else {
                               return null;
                             }
                           },
@@ -511,7 +572,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void route() {
-    User? user = FirebaseAuth.instance.currentUser;
+    User? user = FirebaseAuth.instance.currentUser; //gán uid cho file local
+    final uid = user?.uid;
+    UserID.localUID = uid!;
     //lấy dữ liệu số lượng công việc mỗi ngày theo uid
     var kk = FirebaseFirestore.instance
         .collection('tai_khoan')
@@ -523,7 +586,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => ThuKiHomePage(),
+              builder: (context) => DashBoard('TK'),
             ),
           );
         }
@@ -539,7 +602,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => GiamDocHomePage(),
+              builder: (context) => DashBoard('GD'),
             ),
           );
         } else if (documentSnapshot.get('quyen_han') == "PB") {
@@ -554,7 +617,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
-              builder: (context) => PhongBanHomePage(),
+              builder: (context) => DashBoard('PB'),
             ),
           );
         }
@@ -610,6 +673,8 @@ class _LoginPageState extends State<LoginPage> {
           showErrorMessage('Email không tồn tại');
         } else if (e.code == 'wrong-password') {
           showErrorMessage('Sai mật khẩu');
+        } else if (e.code == 'user-disabled') {
+          showErrorMessage('Tài khoản đã bị khoá');
         }
       }
     }

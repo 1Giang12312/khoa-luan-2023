@@ -26,3 +26,18 @@
 //         }
 //     }
 // })
+const functions = require('firebase-functions');
+const admin = require('firebase-admin');
+admin.initializeApp();
+
+exports.disableUserAccount = functions.https.onCall(async (data, context) => {
+  try {
+    const userRecord = await admin.auth().getUser(data.uid);
+    await admin.auth().updateUser(data.uid, {disabled: true});
+    console.log(`User account with uid ${data.uid} has been disabled`);
+    return {message: `User account with uid ${data.uid} has been disabled`};
+  } catch (e) {
+    console.log(`Error disabling user account: ${e}`);
+    return {error: `Error disabling user account: ${e}`};
+  }
+});

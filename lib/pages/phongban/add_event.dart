@@ -15,7 +15,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_document_picker/flutter_document_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path/path.dart' as path;
-
+import '../../data/UserID.dart';
 import 'dart:math';
 import 'dart:convert';
 
@@ -78,17 +78,11 @@ class _AddEventState extends State<AddEvent> {
   var _app_Password = '';
   var _ten_PB = '';
   var _email_TK = '';
-  var userID = '';
   var tenFilePDF = '';
   var ranDomTenFilePDF = '';
   @override
   void initState() {
     super.initState();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-    userID = uid!;
-    print(uid);
     getName();
 
     // print(_email_PB);
@@ -103,9 +97,6 @@ class _AddEventState extends State<AddEvent> {
 
   void _addEvent() async {
     final DateTime now;
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     final tenCongViec = _ten_cong_viecController.text;
     final thoiGiancv = _thoi_gian_cvController.text;
     final tieuDe = _tieu_deController.text;
@@ -137,7 +128,7 @@ class _AddEventState extends State<AddEvent> {
           "tk_duyet": false,
           "trang_thai": true,
           "do_uu_tien": rool,
-          "tai_khoan_id": uid,
+          "tai_khoan_id": UserID.localUID,
           // lỗi
           "pb_huy": false,
           "ngay_toi_thieu":
@@ -188,7 +179,7 @@ class _AddEventState extends State<AddEvent> {
         .get();
     _email_TK = querySnapshot.docs.first['email'];
     print(_email_TK);
-    setState(() {});
+    //setState(() {});
     //print(tenPB);
   }
 
@@ -218,7 +209,7 @@ class _AddEventState extends State<AddEvent> {
 
   Future<firebase_storage.UploadTask?> uploadFile(File file) async {
     //var luuTenFilePDF = tenFilePDF;
-    if (file == null || tenFilePDF == fileName + '_' + userID + '_') {
+    if (file == null || tenFilePDF == fileName + '_' + UserID.localUID + '_') {
       print('no picked file');
       return null;
     }
@@ -252,17 +243,6 @@ class _AddEventState extends State<AddEvent> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.grey[100],
-        leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(
-              Icons.clear,
-              color: Colors.red,
-            )),
-      ),
       backgroundColor: Colors.grey[100],
       body: ListView(
         padding: const EdgeInsets.all(16.0),
@@ -492,7 +472,9 @@ class _AddEventState extends State<AddEvent> {
                                         isfileNameExsited = true;
                                         print('file name:' + fileName);
                                         ranDomTenFilePDF = getRandString(
-                                            fileName.length, userID, fileName);
+                                            fileName.length,
+                                            UserID.localUID,
+                                            fileName);
                                         print(
                                             'random name:' + ranDomTenFilePDF);
                                       });
@@ -525,8 +507,8 @@ class _AddEventState extends State<AddEvent> {
                                       fileName = '';
                                       isfileNameExsited = false;
                                       print(fileName);
-                                      print(getRandString(
-                                          fileName.length, fileName, userID));
+                                      print(getRandString(fileName.length,
+                                          fileName, UserID.localUID));
                                       print(isfileNameExsited.toString());
                                     });
                                   },

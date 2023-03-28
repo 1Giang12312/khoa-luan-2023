@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:khoa_luan1/pages/giamdoc/GD_home_page.dart';
+import 'package:khoa_luan1/pages/giamdoc/to_do_list_ngay.dart';
+import 'package:khoa_luan1/pages/giamdoc/to_do_list_tuan.dart';
 
 class dashBoard_GD extends StatefulWidget {
   const dashBoard_GD({super.key});
@@ -15,41 +18,81 @@ class _dashBoard_GDState extends State<dashBoard_GD> {
   @override
   void initState() {
     super.initState();
-    // FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    //   String? title = message.notification!.title;
-    //   String? body = message.notification!.body;
-    //   AwesomeNotifications().createNotification(
-    //       content: NotificationContent(
-    //           id: 123,
-    //           channelKey: "gd_to_do_list_ngay",
-    //           color: Colors.white,
-    //           title: title,
-    //           body: body,
-    //           category: NotificationCategory.Call,
-    //           wakeUpScreen: true,
-    //           fullScreenIntent: true,
-    //           autoDismissible: false,
-    //           backgroundColor: Colors.orange),
-    //       actionButtons: [
-    //         NotificationActionButton(
-    //             key: "đóng",
-    //             label: 'đóng',
-    //             color: Colors.green,
-    //             autoDismissible: true),
-    //         NotificationActionButton(
-    //             key: "đóng",
-    //             label: 'đóng',
-    //             color: Colors.green,
-    //             autoDismissible: true),
-    //       ]);
-    //   AwesomeNotifications().actionStream.listen((event) {
-    //     print('bấm vào ');
-    //   });
-    // });
   }
 
+  void onTabTapped(int index) {
+    setState(() {
+      _pageindex = index;
+    });
+  }
+
+  int _pageindex = 0;
+  final List<Widget> _tablist = [GiamDocHomePage(), ToDoList(), ToDoListTuan()];
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return Scaffold(
+      // body: Stack(
+      //   children: [
+      //     _tablist.elementAt(_pageindex),
+      //     Padding(
+      //       padding: const EdgeInsets.all(5.0),
+      //       child: Align(
+      //         alignment: Alignment(0.0, 1.0),
+      //         child: ClipRRect(
+      //           borderRadius: BorderRadius.all(Radius.circular(30)),
+      //           child: BottomNavigationBar(
+      //             items: [
+      //               BottomNavigationBarItem(
+      //                   icon: Icon(Icons.home), label: 'home'),
+      //               BottomNavigationBarItem(
+      //                   icon: Icon(Icons.schedule), label: 'schedule'),
+      //               BottomNavigationBarItem(
+      //                   icon: Icon(Icons.settings), label: 'settings'),
+      //             ],
+      //             selectedItemColor: Colors.white,
+      //             unselectedItemColor: Colors.grey,
+      //             showSelectedLabels: true,
+      //             showUnselectedLabels: false,
+      //             backgroundColor: Colors.black,
+      //             currentIndex: _pageindex,
+      //             onTap: (int index) {
+      //               setState(() {
+      //                 _pageindex = index;
+      //               });
+      //             },
+      //           ),
+      //         ),
+      //       ),
+      //     )
+      //   ],
+      // ),
+      body: SafeArea(
+        child: _tablist[_pageindex],
+      ),
+
+      bottomNavigationBar: BottomNavigationBar(
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.grey,
+        showSelectedLabels: true,
+        showUnselectedLabels: false,
+        backgroundColor: Colors.black,
+        currentIndex: _pageindex,
+        onTap: onTabTapped,
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Search',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:khoa_luan1/data/UserID.dart';
 import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 import '../../list_event.dart';
@@ -27,17 +28,12 @@ Timestamp endOfWeekTimestamp = Timestamp.fromDate(endOfWeek);
 // Timestamp.fromd
 class _ListCongViecState extends State<ListCongViec> {
   // late Map<DateTime, List<Event>> _events;
-  String? uid = '';
   var _event;
   var selectedValue = 'Tất cả';
   @override
   void initState() {
     super.initState();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    uid = user?.uid;
-
-    print(uid);
+    print(UserID.localUID);
     // _event = FirebaseFirestore.instance
     //     .collection('cong_viec')
     //     .where('tai_khoan_id', isEqualTo: uid);
@@ -48,27 +44,27 @@ class _ListCongViecState extends State<ListCongViec> {
     if (selectedValue == 'Đã duyệt') {
       _event = FirebaseFirestore.instance
           .collection('cong_viec')
-          .where('tai_khoan_id', isEqualTo: uid)
+          .where('tai_khoan_id', isEqualTo: UserID.localUID)
           .where('tk_duyet', isEqualTo: true);
     } else if (selectedValue == 'Chưa duyệt') {
       _event = FirebaseFirestore.instance
           .collection('cong_viec')
-          .where('tai_khoan_id', isEqualTo: uid)
+          .where('tai_khoan_id', isEqualTo: UserID.localUID)
           .where('tk_duyet', isEqualTo: false);
     } else if (selectedValue == 'Đã diễn ra') {
       _event = FirebaseFirestore.instance
           .collection('cong_viec')
-          .where('tai_khoan_id', isEqualTo: uid)
+          .where('tai_khoan_id', isEqualTo: UserID.localUID)
           .where('trang_thai', isEqualTo: false);
     } else if (selectedValue == 'Chưa diễn ra') {
       _event = FirebaseFirestore.instance
           .collection('cong_viec')
-          .where('tai_khoan_id', isEqualTo: uid)
+          .where('tai_khoan_id', isEqualTo: UserID.localUID)
           .where('trang_thai', isEqualTo: true);
     } else {
       _event = FirebaseFirestore.instance
           .collection('cong_viec')
-          .where('tai_khoan_id', isEqualTo: uid);
+          .where('tai_khoan_id', isEqualTo: UserID.localUID);
     }
   }
 
@@ -162,7 +158,7 @@ class _ListCongViecState extends State<ListCongViec> {
                         setState(() {
                           _event = FirebaseFirestore.instance
                               .collection('cong_viec')
-                              .where('tai_khoan_id', isEqualTo: uid)
+                              .where('tai_khoan_id', isEqualTo: UserID.localUID)
                               .where('ten_cong_viec',
                                   isGreaterThanOrEqualTo: value)
                               .orderBy('ten_cong_viec')

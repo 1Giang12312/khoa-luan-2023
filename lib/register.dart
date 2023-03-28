@@ -91,11 +91,12 @@ class _RegisterState extends State<Register> {
                             if (value!.length == 0) {
                               return "Email không được để trống!";
                             }
-                            if (!RegExp(
-                                    "^[a-zA-Z0-9+_.-]+@agu.edu.vn") //regexp agu mail
-                                .hasMatch(value)) {
-                              return ("Hãy nhập mail agu");
-                            } else {
+                            // if (!RegExp(
+                            //         "^[a-zA-Z0-9+_.-]+@agu.edu.vn") //regexp agu mail
+                            //     .hasMatch(value)) {
+                            //   return ("Hãy nhập mail agu");
+                            // }
+                            else {
                               return null;
                             }
                           },

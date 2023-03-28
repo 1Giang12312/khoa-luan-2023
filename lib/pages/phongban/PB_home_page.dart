@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:khoa_luan1/data/UserID.dart';
 import 'package:khoa_luan1/pages/phongban/item_details.dart';
 import '../../login.dart';
 import 'dart:collection';
@@ -41,10 +42,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
       equals: isSameDay,
       hashCode: getHashCode,
     );
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-    print(uid);
+    print(UserID.localUID);
     _firstDay = DateTime.now().subtract(const Duration(days: 1000));
     _lastDay = DateTime.now().add(const Duration(days: 1000));
     _selectedDay = DateTime.now();
@@ -52,9 +50,6 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
   }
 
   _loadFirestoreEvents() async {
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     final firstDay = DateTime(
       _focusedDay.year,
       _focusedDay.month - 1,
@@ -64,7 +59,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
 
     final snap = await FirebaseFirestore.instance
         .collection('cong_viec')
-        .where('tai_khoan_id', isEqualTo: uid)
+        .where('tai_khoan_id', isEqualTo: UserID.localUID)
         .where('tk_duyet', isEqualTo: true) // tk duyet moi hien
         .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: firstDay)
         .where('ngay_gio_bat_dau', isLessThanOrEqualTo: lastDay)
@@ -92,59 +87,6 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text("Phòng ban"),
-        actions: [
-          IconButton(
-            onPressed: () {
-              logout(context);
-            },
-            icon: Icon(
-              Icons.logout,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ToDoList(),
-                ),
-              );
-            },
-            icon: Icon(
-              Icons.schedule_send_rounded,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ToDoListTuan(),
-                ),
-              );
-            },
-            icon: Icon(
-              Icons.schedule_outlined,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ListCongViec(),
-                ),
-              );
-            },
-            icon: Icon(
-              Icons.calendar_today,
-            ),
-          ),
-        ],
-      ),
       body: SingleChildScrollView(
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,20 +200,6 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
                 ),
               ),
             ]),
-      ),
-    );
-  }
-
-  Future<void> logout(BuildContext context) async {
-    CircularProgressIndicator();
-    await FirebaseAuth.instance.signOut();
-    // account.tai_khoan = '';
-    // account.mat_khau = '';
-    clearUserCredentials();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LoginPage(),
       ),
     );
   }

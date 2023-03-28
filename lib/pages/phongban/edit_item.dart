@@ -15,6 +15,7 @@ import 'package:flutter_document_picker/flutter_document_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path/path.dart' as path;
+import '../../data/UserID.dart';
 
 class EditItem extends StatefulWidget {
   String itemId;
@@ -51,7 +52,6 @@ class _EditItemState extends State<EditItem> {
   var _dia_diem = '';
   var _do_uu_tien = '';
 
-  var userID = '';
   var tenFilePDF = '';
   var ranDomTenFilePDF = '';
 
@@ -63,10 +63,6 @@ class _EditItemState extends State<EditItem> {
   @override
   void initState() {
     super.initState();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-    userID = uid!;
     final _reference =
         FirebaseFirestore.instance.collection('cong_viec').doc(widget.itemId);
     _futureData = _reference.get();
@@ -108,7 +104,7 @@ class _EditItemState extends State<EditItem> {
 
   Future<firebase_storage.UploadTask?> uploadFile(File file) async {
     //var luuTenFilePDF = tenFilePDF;
-    if (file == null || tenFilePDF == fileName + '_' + userID + '_') {
+    if (file == null || tenFilePDF == fileName + '_' + UserID.localUID + '_') {
       print('no picked file');
       return null;
     }
@@ -517,7 +513,9 @@ class _EditItemState extends State<EditItem> {
                                         isfileNameExsited = true;
                                         print('file name:' + fileName);
                                         ranDomTenFilePDF = getRandString(
-                                            fileName.length, userID, fileName);
+                                            fileName.length,
+                                            UserID.localUID,
+                                            fileName);
                                         print(
                                             'random name:' + ranDomTenFilePDF);
                                       });
@@ -552,8 +550,8 @@ class _EditItemState extends State<EditItem> {
                                       isfileNameExsited = false;
                                       print('file:' + file.toString());
                                       print('fileName:' + fileName);
-                                      print(getRandString(
-                                          fileName.length, fileName, userID));
+                                      print(getRandString(fileName.length,
+                                          fileName, UserID.localUID));
                                       print(isfileNameExsited.toString());
                                     });
                                   },

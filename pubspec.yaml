@@ -52,7 +52,9 @@ dependencies:
   flutter_pdfview: ^1.0.5
   path: ^1.8.0
   flutter_cache_manager: ^3.3.0
- 
+
+  google_nav_bar: ^5.0.6
+  firebase_admin: ^0.2.0-dev.1
 dev_dependencies:
   flutter_test:
     sdk: flutter

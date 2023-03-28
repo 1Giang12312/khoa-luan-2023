@@ -1,10 +1,13 @@
+import 'dart:convert';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart'
-    as local_notifications;
+
+import 'package:khoa_luan1/data/FCMtoken.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
 import '../../login.dart';
@@ -14,6 +17,7 @@ import 'TK_home_page.dart';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/model/event.dart';
 import '../../data/selectedDay.dart';
+import 'package:http/http.dart' as http;
 
 class DuyetEventMain extends StatefulWidget {
   @override
@@ -76,9 +80,8 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   var _ten_tk = '';
   var _ngay_post = '';
   var _ngay_toi_thieu = '';
-  local_notifications.FlutterLocalNotificationsPlugin
-      flutterLocalNotificationsPlugin =
-      local_notifications.FlutterLocalNotificationsPlugin();
+  var fCMToken = '';
+
   //final daytimeSang = DateTime(now.year, now.month, now.day, 23, 59, 59);
   //Timestamp sang7h=Timestamp.fromDate(startOfToday);
   //Timestamp _xet_trang_thai_ts = Timestamp.fromDate(now);
@@ -100,64 +103,57 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     });
   }
 
-  initInfo() async {
-    //local_notifications
-    final android = local_notifications.AndroidInitializationSettings(
-        '@mipmap/ic_launcher');
-    final iOS = local_notifications.IOSInitializationSettings();
-    final settings =
-        local_notifications.InitializationSettings(android: android, iOS: iOS);
-    flutterLocalNotificationsPlugin.initialize(settings,
-        onSelectNotification: (payload) async {
-      try {
-        if (payload != null && payload.isNotEmpty) {
-          Navigator.push(context,
-              MaterialPageRoute(builder: (BuildContext context) {
-            return LoginPage();
-          }));
-        }
-      } catch (e) {
-        print(e);
+  getFCMToken() async {
+    final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
+    final ordersCollection = FirebaseFirestore.instance.collection('cong_viec');
+
+    final orderId = widget.eventID;
+
+    final orderDoc = await ordersCollection.doc(orderId).get();
+    final userId = orderDoc['tai_khoan_id'];
+    final userDoc = await usersCollection.doc(userId).get();
+    final FCMToken = userDoc['FCMtoken'];
+    fCMToken = FCMToken;
+    print(fCMToken); // thanh cong
+  }
+
+  void SendPushMessage(String token, String body, String title) async {
+    try {
+      await http.post(
+        Uri.parse('https://fcm.googleapis.com/fcm/send'),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+          'Authorization':
+              'key=AAAAljFhcnQ:APA91bG5G3b-EvPM945TAhKrmN7n0ifmpNDNlhynEvo1FoSBD2KLHiUub2S2g2GscO4U0V5Sn5Ull3u4Ca0G1hN6Hzw5UlOwgUCYEgcOHEOP8q3_7kbAgorA633txp_raKsYXpoX_1h_',
+        },
+        body: jsonEncode(
+          <String, dynamic>{
+            'priority': 'high',
+            'data': <String, dynamic>{
+              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+              'status': 'done',
+              'body': body,
+              'title': title
+            },
+            "notification": <String, dynamic>{
+              "title": title,
+              "body": body,
+              "android_channel_id": "tk_duyet"
+            },
+            "to": token,
+          },
+        ),
+      );
+    } catch (e) {
+      if (kDebugMode) {
+        print('error push notification');
       }
-      return;
-      // onNotification.add(payload);
-    });
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
-      print('--onMessasge--');
-      print(
-          'on message: ${message.notification?.title}/${message.notification?.body}');
-      local_notifications.BigTextStyleInformation bigTextStyleInformation =
-          local_notifications.BigTextStyleInformation(
-        message.notification!.body.toString(),
-        htmlFormatBigText: true,
-        contentTitle: message.notification!.title.toString(),
-        htmlFormatContentTitle: true,
-      );
-      local_notifications.AndroidNotificationDetails
-          andoroidPlatformChannelSpecifics =
-          local_notifications.AndroidNotificationDetails(
-        'tk_duet', 'tk_duyet',
-        importance: local_notifications.Importance.high,
-        styleInformation: bigTextStyleInformation,
-        priority: local_notifications.Priority.high,
-        // playSound: true,
-        // sound: local_notifications.RawResourceAndroidNotificationSound(
-        //     'notification'
-        //     )
-      );
-      local_notifications.NotificationDetails platformChannelSpecifics =
-          local_notifications.NotificationDetails(
-              android: andoroidPlatformChannelSpecifics,
-              iOS: const local_notifications.IOSNotificationDetails());
-      await flutterLocalNotificationsPlugin.show(1, message.notification?.title,
-          message.notification?.body, platformChannelSpecifics,
-          payload: message.data['title']);
-    });
+    }
   }
 
   @override
   void initState() {
-    initInfo();
+    getFCMToken();
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
@@ -180,6 +176,7 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     //xảy ra rồi => datetime.now <= giờ kết thúc => update trang_thai==false
 
     //lấy danh sách công việc thư kí đã duyệt hôm nay đưa vào list
+    //lấy FCM token của device account thêm công việc
   }
 
   getName() async {
@@ -280,10 +277,8 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   //   final query = eventsRef
   //       .where('ngay_gio_ket_thuc', isLessThanOrEqualTo: _datetime_now)
   //       .where('tk_duyet', isEqualTo: true);
-
   //   final snapshot = await query.get();
   //   final docs = snapshot.docs;
-
   //   for (final doc in docs) {
   //     final ref = doc.reference;
   //     await ref.update({'trang_thai': false});
@@ -615,6 +610,10 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
           });
           print('thêm');
           if (mounted) {
+            SendPushMessage(
+                fCMToken,
+                'Bắt đầu lúc' + _gio_bat_dauController.text,
+                'Công việc' + _ten_cong_viecController.text);
             sendMail();
             Navigator.pop<bool>(context, true);
             //PhongBanHomePage();

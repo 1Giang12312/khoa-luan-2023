@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:khoa_luan1/data/UserID.dart';
 import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/model/details_item.dart';
@@ -24,22 +25,17 @@ Timestamp endOfWeekTimestamp = Timestamp.fromDate(endOfWeek);
 // Timestamp.fromd
 class _ToDoListTuanState extends State<ToDoListTuan> {
   // late Map<DateTime, List<Event>> _events;
-  var uid;
   var _event;
   @override
   void initState() {
     super.initState();
-
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     _event = FirebaseFirestore.instance
         .collection('cong_viec')
-        .where('tai_khoan_id', isEqualTo: uid)
+        .where('tai_khoan_id', isEqualTo: UserID.localUID)
         .where('tk_duyet', isEqualTo: true)
         .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfWeekTimestamp)
         .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp);
-    print(uid);
+    print(UserID.localUID);
   }
 
 // Định dạng ngày tháng
@@ -51,14 +47,6 @@ class _ToDoListTuanState extends State<ToDoListTuan> {
         backgroundColor: Colors.grey[100],
         title:
             Text('Lịch trình của tuần', style: TextStyle(color: Colors.black)),
-        leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(
-              Icons.clear,
-              color: Colors.red,
-            )),
       ),
       body: SingleChildScrollView(
         child: Column(

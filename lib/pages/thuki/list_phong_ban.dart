@@ -12,27 +12,26 @@ import 'duyet_event_detail.dart';
 import '../../data/selectedDay.dart';
 import 'duyet_event_main.dart';
 import 'detail_duyet_yeu_cau_huy_pb.dart';
+import 'list_phong_ban_details.dart';
 
-class DuyetYeuCauHuy extends StatefulWidget {
-  const DuyetYeuCauHuy({super.key});
+class ListPhongBan extends StatefulWidget {
+  const ListPhongBan({super.key});
 
   @override
-  State<DuyetYeuCauHuy> createState() => _DuyetYeuCauHuyState();
+  State<ListPhongBan> createState() => _ListPhongBanState();
 }
 
 late DateTime _firstDay;
 late DateTime _lastDay;
 
 // Timestamp.fromd
-class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
+class _ListPhongBanState extends State<ListPhongBan> {
   // late Map<DateTime, List<Event>> _events;
   var _event;
   @override
   void initState() {
     super.initState();
-    _event = FirebaseFirestore.instance
-        .collection('cong_viec')
-        .where('pb_huy', isEqualTo: true);
+    _event = FirebaseFirestore.instance.collection('tai_khoan');
     _firstDay = DateTime.now().subtract(const Duration(days: 1000));
     _lastDay = DateTime.now().add(const Duration(days: 1000));
   }
@@ -42,8 +41,11 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Danh sách yêu cầu hủy ',
-            style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.grey[100],
+            style: TextStyle(color: Colors.white)),
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -63,10 +65,10 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                   itemBuilder: (context, index) {
                     final DocumentSnapshot documentSnapshot =
                         snapshot.data!.docs[index];
-                    DateTime ngay_toi_thieu =
-                        documentSnapshot['ngay_toi_thieu'].toDate();
-                    String formatngay_toi_thieu =
-                        DateFormat('dd/MM/yyyy').format(ngay_toi_thieu);
+                    // DateTime ngay_toi_thieu =
+                    //     documentSnapshot['ngay_toi_thieu'].toDate();
+                    // String formatngay_toi_thieu =
+                    //     DateFormat('dd/MM/yyyy').format(ngay_toi_thieu);
                     return Card(
                       margin: const EdgeInsets.all(10),
                       child: ListTile(
@@ -75,11 +77,11 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                             context,
                             MaterialPageRoute(
                               builder: (_) =>
-                                  DuyetYeuCauHuyDetail(documentSnapshot.id),
+                                  ListPhongBanDetails(documentSnapshot.id),
                             ),
                           );
                           print(documentSnapshot.id);
-                          Navigator.of(context).maybePop();
+                          //Navigator.of(context).maybePop();
                           // final res = await Navigator.push<bool>(
                           //   context,
                           //   MaterialPageRoute(
@@ -92,9 +94,8 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                           //   ),
                           // );
                         },
-                        title: Text(documentSnapshot['tieu_de']),
-                        subtitle: Text('Ngày tối thiểu: ' +
-                            formatngay_toi_thieu.toString()),
+                        title: Text(documentSnapshot['ten']),
+                        subtitle: Text(documentSnapshot['email']),
                         trailing: PopupMenuButton(
                             icon: Icon(Icons.more_vert),
                             itemBuilder: (context) => [

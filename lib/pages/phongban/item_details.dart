@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 // import 'package:flutterfiredemo/edit_item.dart';
 import 'package:intl/intl.dart';
+import '../../data/UserID.dart';
 import '../../services/view_file_pdf.dart';
 import 'edit_item.dart';
 import 'package:mailer/mailer.dart';
@@ -48,10 +49,6 @@ class _ItemDetailsState extends State<ItemDetails> {
   @override
   void initState() {
     super.initState();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-    print(uid);
     getName();
     // print(_email_PB);
     // print(_app_Password);
@@ -64,13 +61,10 @@ class _ItemDetailsState extends State<ItemDetails> {
   }
 
   getName() async {
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
     final eventCollection = FirebaseFirestore.instance.collection('cong_viec');
     final eventDoc = await eventCollection.doc(widget.itemId).get();
-    final userDoc = await usersCollection.doc(uid).get();
+    final userDoc = await usersCollection.doc(UserID.localUID).get();
     final _email = userDoc['email'];
     final _app_PW = userDoc['app_password'];
     final _ten = userDoc['ten'];
