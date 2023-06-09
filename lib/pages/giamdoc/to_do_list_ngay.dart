@@ -7,7 +7,6 @@ import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 import 'package:khoa_luan1/model/details_item.dart';
 import '../thuki/item_details_tk.dart';
-import 'item_details_giam_doc.dart';
 
 class ToDoList extends StatefulWidget {
   const ToDoList({super.key});
@@ -27,6 +26,8 @@ class _ToDoListState extends State<ToDoList> {
   // late Map<DateTime, List<Event>> _events;
   var uid;
   var _event;
+  var _diaDiem = '';
+  var selectedValue = 'Tất cả';
   @override
   void initState() {
     super.initState();
@@ -34,12 +35,32 @@ class _ToDoListState extends State<ToDoList> {
     final FirebaseAuth auth = FirebaseAuth.instance;
     final User? user = auth.currentUser;
     final uid = user?.uid;
-    _event = FirebaseFirestore.instance
-        .collection('cong_viec')
-        .where('tk_duyet', isEqualTo: true)
-        .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfToday)
-        .where('ngay_gio_bat_dau', isLessThanOrEqualTo: endOfToday);
+    getData();
     print(uid);
+  }
+
+  void getData() {
+    if (selectedValue == 'Đã diễn ra') {
+      _event = FirebaseFirestore.instance
+          .collection('cong_viec')
+          .where('tk_duyet', isEqualTo: true)
+          .where('trang_thai', isEqualTo: false)
+          .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfToday)
+          .where('ngay_gio_bat_dau', isLessThanOrEqualTo: endOfToday);
+    } else if (selectedValue == 'Chưa diễn ra') {
+      _event = FirebaseFirestore.instance
+          .collection('cong_viec')
+          .where('tk_duyet', isEqualTo: true)
+          .where('trang_thai', isEqualTo: true)
+          .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfToday)
+          .where('ngay_gio_bat_dau', isLessThanOrEqualTo: endOfToday);
+    } else {
+      _event = FirebaseFirestore.instance
+          .collection('cong_viec')
+          .where('tk_duyet', isEqualTo: true)
+          .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfToday)
+          .where('ngay_gio_bat_dau', isLessThanOrEqualTo: endOfToday);
+    }
   }
 
 // Định dạng ngày tháng
@@ -51,19 +72,46 @@ class _ToDoListState extends State<ToDoList> {
         backgroundColor: Colors.grey[100],
         title: Text('Lịch trình của hôm nay',
             style: TextStyle(color: Colors.black)),
-        leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            icon: Icon(
-              Icons.clear,
-              color: Colors.red,
-            )),
       ),
       body: SingleChildScrollView(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            Row(
+              children: [
+                SizedBox(
+                  width: 10,
+                ),
+                Text('Lọc:'),
+                SizedBox(
+                  width: 10,
+                ),
+                DropdownButton(
+                  hint: Text('Chọn tùy chọn'),
+                  value: selectedValue,
+                  onChanged: (newValue) {
+                    setState(() {
+                      selectedValue = newValue.toString()!;
+                      getData();
+                    });
+                  },
+                  items: [
+                    DropdownMenuItem(
+                      child: Text('Tất cả'),
+                      value: 'Tất cả',
+                    ),
+                    DropdownMenuItem(
+                      child: Text('Đã diễn ra'),
+                      value: 'Đã diễn ra',
+                    ),
+                    DropdownMenuItem(
+                      child: Text('Chưa diễn ra'),
+                      value: 'Chưa diễn ra',
+                    ),
+                  ],
+                ),
+              ],
+            ),
             StreamBuilder(
               builder: (BuildContext context,
                   AsyncSnapshot<QuerySnapshot> snapshot) {
@@ -93,22 +141,18 @@ class _ToDoListState extends State<ToDoList> {
                           final res = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  ItemDetailsThuKi(documentSnapshot.id),
+                              builder: (_) => ItemDetailsThuKi(
+                                  documentSnapshot.id, false, true),
                             ),
                           );
                           print(documentSnapshot.id);
                         },
                         title: Text(documentSnapshot['tieu_de']),
-                        subtitle: Text(documentSnapshot['dia_diem']),
+                        subtitle: Text(documentSnapshot['ten_cong_viec']),
                         trailing: Text('Ngày ' +
                             formattedDate.toString() +
                             '\nLúc ' +
                             formattedTime),
-                        leading: Icon(
-                          Icons.check_box,
-                          color: Colors.green,
-                        ),
                       ),
                     );
                   },

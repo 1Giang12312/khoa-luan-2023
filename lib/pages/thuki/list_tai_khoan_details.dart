@@ -3,16 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
-import 'data/UserID.dart';
 
-class AccountInfor extends StatefulWidget {
-  AccountInfor({super.key, required this.userIDString});
+class ListTaiKhoanDetails extends StatefulWidget {
+  ListTaiKhoanDetails({super.key, required this.userIDString});
   String userIDString;
   @override
-  State<AccountInfor> createState() => _AccountInforState();
+  State<ListTaiKhoanDetails> createState() => _ListTaiKhoanDetailsState();
 }
 
-class _AccountInforState extends State<AccountInfor> {
+class _ListTaiKhoanDetailsState extends State<ListTaiKhoanDetails> {
   final TextEditingController tenController = new TextEditingController();
   final TextEditingController emailController = new TextEditingController();
   final TextEditingController sdtController = new TextEditingController();
@@ -33,42 +32,6 @@ class _AccountInforState extends State<AccountInfor> {
   void initState() {
     super.initState();
     getData();
-  }
-
-  void _editItem() async {
-    final DateTime now;
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
-    if (_formkey.currentState!.validate()) {
-      try {
-        await FirebaseFirestore.instance
-            // .collection('tai_khoan')
-            // .doc(uid)
-            .collection('tai_khoan')
-            .doc(widget.userIDString)
-            .update({
-          "app_password": appPasswordController.text,
-          "ten": tenController.text,
-          "so_dien_thoai": sdtController.text,
-          "fax": faxController.text
-        });
-
-        if (mounted) {
-          print('sua thanh cong');
-          Navigator.pop(context);
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('Sửa thông tin cá nhân thành công'),
-            action: SnackBarAction(
-              label: 'Hủy',
-              onPressed: () {},
-            ),
-          ));
-        }
-      } catch (e) {
-        print(e);
-      }
-    }
   }
 
   getData() async {
@@ -93,7 +56,7 @@ class _AccountInforState extends State<AccountInfor> {
     final taikhoanCollection =
         FirebaseFirestore.instance.collection('tai_khoan');
 
-    final userID = UserID.localUID;
+    final userID = widget.userIDString;
 
     final userQuyenHanDoc = await taikhoanCollection.doc(userID).get();
     final quyenHanID = userQuyenHanDoc['quyen_han_id'];
@@ -162,6 +125,7 @@ class _AccountInforState extends State<AccountInfor> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   TextFormField(
+                                    readOnly: true,
                                     controller: tenController,
                                     decoration: InputDecoration(
                                       labelText: 'Tên',
@@ -195,8 +159,9 @@ class _AccountInforState extends State<AccountInfor> {
                                   SizedBox(
                                     height: 10,
                                   ),
+
                                   TextFormField(
-                                    //readOnly: true,
+                                    readOnly: true,
                                     controller: emailController,
                                     decoration: InputDecoration(
                                       labelText: 'Email',
@@ -238,6 +203,7 @@ class _AccountInforState extends State<AccountInfor> {
                                     height: 10,
                                   ),
                                   TextFormField(
+                                    readOnly: true,
                                     controller: sdtController,
                                     decoration: InputDecoration(
                                       labelText: 'Số điện thoại',
@@ -280,50 +246,50 @@ class _AccountInforState extends State<AccountInfor> {
                                   SizedBox(
                                     height: 10,
                                   ),
-                                  TextFormField(
-                                    obscureText: _isObscure,
-                                    controller: appPasswordController,
-                                    decoration: InputDecoration(
-                                      suffixIcon: IconButton(
-                                          icon: Icon(_isObscure
-                                              ? Icons.visibility_off
-                                              : Icons.visibility),
-                                          onPressed: () {
-                                            setState(() {
-                                              _isObscure = !_isObscure;
-                                            });
-                                          }),
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      labelText: 'App password',
-                                      enabled: true,
-                                      contentPadding: const EdgeInsets.only(
-                                          left: 14.0, bottom: 8.0, top: 15.0),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                      enabledBorder: UnderlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                    ),
-                                    validator: (value) {
-                                      if (value!.length == 0) {
-                                        return "App password không được để trống!";
-                                      } else {
-                                        return null;
-                                      }
-                                    },
-                                    onChanged: (value) {},
-                                  ),
-                                  SizedBox(
-                                    height: 10,
-                                  ),
+                                  // TextFormField(
+                                  //   obscureText: _isObscure,
+                                  //   controller: appPasswordController,
+                                  //   decoration: InputDecoration(
+                                  //     suffixIcon: IconButton(
+                                  //         icon: Icon(_isObscure
+                                  //             ? Icons.visibility_off
+                                  //             : Icons.visibility),
+                                  //         onPressed: () {
+                                  //           setState(() {
+                                  //             _isObscure = !_isObscure;
+                                  //           });
+                                  //         }),
+                                  //     filled: true,
+                                  //     fillColor: Colors.white,
+                                  //     labelText: 'App password',
+                                  //     enabled: true,
+                                  //     contentPadding: const EdgeInsets.only(
+                                  //         left: 14.0, bottom: 8.0, top: 15.0),
+                                  //     focusedBorder: OutlineInputBorder(
+                                  //       borderSide:
+                                  //           new BorderSide(color: Colors.white),
+                                  //       borderRadius:
+                                  //           new BorderRadius.circular(20),
+                                  //     ),
+                                  //     enabledBorder: UnderlineInputBorder(
+                                  //       borderSide:
+                                  //           new BorderSide(color: Colors.white),
+                                  //       borderRadius:
+                                  //           new BorderRadius.circular(20),
+                                  //     ),
+                                  //   ),
+                                  //   validator: (value) {
+                                  //     if (value!.length == 0) {
+                                  //       return "App password không được để trống!";
+                                  //     } else {
+                                  //       return null;
+                                  //     }
+                                  //   },
+                                  //   onChanged: (value) {},
+                                  // ),
+                                  // SizedBox(
+                                  //   height: 10,
+                                  // ),
                                   TextFormField(
                                     controller: quyenHanController,
                                     readOnly: true,
@@ -378,6 +344,7 @@ class _AccountInforState extends State<AccountInfor> {
                                   SizedBox(
                                     height: 10,
                                   ),
+
                                   Row(
                                     children: [
                                       MaterialButton(
@@ -402,25 +369,6 @@ class _AccountInforState extends State<AccountInfor> {
                                       ),
                                       SizedBox(
                                         width: 40,
-                                      ),
-                                      MaterialButton(
-                                        shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.all(
-                                                Radius.circular(20.0))),
-                                        elevation: 5.0,
-                                        height: 40,
-                                        onPressed: () {
-                                          _editItem();
-                                          // signUp(emailController.text,
-                                          //     passwordController.text, rool);
-                                        },
-                                        color: Colors.blue[900],
-                                        child: Text(
-                                          "Lưu",
-                                          style: TextStyle(
-                                              fontSize: 20,
-                                              color: Colors.white),
-                                        ),
                                       ),
                                     ],
                                   ),

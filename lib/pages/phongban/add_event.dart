@@ -3,21 +3,24 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:core';
 import 'package:intl/intl.dart';
-import 'package:khoa_luan1/pages/phongban/PB_home_page.dart';
 import 'package:khoa_luan1/services/upload_filepdf.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
-
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_document_picker/flutter_document_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:path/path.dart' as path;
+import 'package:path/path.dart' as path1;
+import '../../dashboard.dart';
 import '../../data/UserID.dart';
 import 'dart:math';
 import 'dart:convert';
+import '../../services/send_push_massage.dart';
+import 'list_cong_viec.dart';
 
 class AddEvent extends StatefulWidget {
   // final DateTime firstDate;
@@ -69,9 +72,13 @@ class _AddEventState extends State<AddEvent> {
   //late  DateTime now = DateTime.now();
   //tải lên file pdf
   String fileName = '';
+  String fileName1 = '';
   bool isfileNameExsited = false;
+  bool isfileNameExsited1 = false;
   File? file = null;
+  File? file1 = null;
   // Định dạng năm-tháng-ngày
+  var todaynow = DateTime.now().toString();
 
   final thoi_gian_cong_viec_max = 240; //phut
   var _email_PB = '';
@@ -80,11 +87,22 @@ class _AddEventState extends State<AddEvent> {
   var _email_TK = '';
   var tenFilePDF = '';
   var ranDomTenFilePDF = '';
+  var ranDomTenFilePDF1 = '';
+  var _FCMtoken = '';
+  var _diaDiem = '';
+  var _phong_ban_ID = '';
+  var tenDiaDiem = '';
+  var idThuky = '';
+  //var chuoi = '';
+  bool isTaiKhoanBiKhoa = true;
+  List<DropdownMenuItem<String>> _categoriesList = [];
+  String selectedPB = '0';
+  late bool isLoading = false;
   @override
   void initState() {
     super.initState();
     getName();
-
+    getFCMToken();
     // print(_email_PB);
     // print(_app_Password);
     // DateTime _formattedNgaydx = DateTime.parse(_ngay_de_xuat.text);
@@ -95,56 +113,174 @@ class _AddEventState extends State<AddEvent> {
     //_selectedDate = widget.selectedDate ?? DateTime.now();
   }
 
+  getDiaDiem() async {
+    if (selectedPB != '0') {
+      final diaDiemCollection =
+          FirebaseFirestore.instance.collection('dia_diem');
+      final diaDiemDoc = await diaDiemCollection.doc(selectedPB).get();
+      _diaDiem = diaDiemDoc['ten_dia_diem'];
+    }
+  }
+
+  getFCMToken() async {
+    QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+        .collection('tai_khoan')
+        .where('quyen_han_id', isEqualTo: 'TK')
+        .limit(1)
+        .get();
+    _FCMtoken = querySnapshot.docs.first['FCMtoken'];
+    print(_FCMtoken);
+  }
+
+  void resetTextField() {
+    setState(() {
+      fileName = '';
+      fileName1 = '';
+      isfileNameExsited = false;
+      isfileNameExsited1 = false;
+      file = null;
+      file1 = null;
+      getName();
+      _ten_cong_viecController.clear();
+      _thoi_gian_cvController.clear();
+      _tieu_deController.clear();
+      _dia_diemController.clear();
+      fileName = '';
+      isfileNameExsited = false;
+      file = null;
+      _email_PB = '';
+      _app_Password = '';
+      _ten_PB = '';
+      _email_TK = '';
+      tenFilePDF = '';
+      ranDomTenFilePDF = '';
+      ranDomTenFilePDF1 = '';
+    });
+  }
+
   void _addEvent() async {
     final DateTime now;
     final tenCongViec = _ten_cong_viecController.text;
     final thoiGiancv = _thoi_gian_cvController.text;
     final tieuDe = _tieu_deController.text;
     final diadiem = _dia_diemController.text;
-    if (fileName == '') {
-      tenFilePDF = '';
-    } else {
-      tenFilePDF = ranDomTenFilePDF;
-    }
-    // DateTime _formattedNgaydx = DateTime.parse(_ngay_de_xuat.text);
-    // //_ngay_de_xuat_formatted = DateFormat.yMEd();
-    // String formattedDate = DateFormat('yyyy-MM-dd').format(_formattedNgaydx);
-    // print(_formattedNgaydx);
-    // if (tenCongViec.isEmpty || thoiGiancv.isEmpty || tieuDe.isEmpty) {
-    //   return ;
+    // if (fileName == '') {
+    //   tenFilePDF = '';
+    // } else {
+    //   tenFilePDF = ranDomTenFilePDF;
     // }
-    // DateTime formattedDay = DateFormat('yyyy-MM-dd').format(DateTime.parse(_ngay_de_xuat.text));
-
+    if (fileName == '' && fileName1 == '') {
+      tenFilePDF = '';
+    } else if (fileName != '' && fileName1 == '') {
+      tenFilePDF = ranDomTenFilePDF;
+    } else if (fileName == '' && fileName1 != '') {
+      tenFilePDF = ranDomTenFilePDF1;
+    } else {
+      tenFilePDF = ranDomTenFilePDF + '_=)()(=_' + ranDomTenFilePDF1;
+    }
     if (_formkey.currentState!.validate()) {
       try {
-        await FirebaseFirestore.instance.collection('cong_viec').add({
-          "gd_huy": false,
-          "ngay_gio_bat_dau": Timestamp.fromDate(DateTime.now()),
-          "ngay_post": Timestamp.fromDate(DateTime.now()),
-          "ten_cong_viec": tenCongViec,
-          "thoi_gian_cv": thoiGiancv,
-          "tieu_de": tieuDe,
-          //thu ki duyet
-          "tk_duyet": false,
-          "trang_thai": true,
-          "do_uu_tien": rool,
-          "tai_khoan_id": UserID.localUID,
-          // lỗi
-          "pb_huy": false,
-          "ngay_toi_thieu":
-              Timestamp.fromDate(DateTime.parse(_ngay_de_xuat.text)),
-          "ngay_gio_ket_thuc": Timestamp.fromDate(DateTime.now()),
-          "dia_diem": diadiem,
-          "file_pdf": tenFilePDF
-        });
-        if (mounted) {
-          if (file != null) {
-            firebase_storage.UploadTask? task = await uploadFile(file!);
-          }
-          sendMail();
-          Navigator.pop<bool>(context, true);
+        if (selectedPB == '0') {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                backgroundColor: Color.fromARGB(255, 255, 0, 0),
+                title: Center(
+                  child: Text(
+                    'Hãy địa điểm',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              );
+            },
+          );
+        } else if (isTaiKhoanBiKhoa == false) {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                backgroundColor: Colors.red,
+                title: Center(
+                  child: Text(
+                    'Tài khoản bị khoá !',
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              );
+            },
+          );
+        } else {
+          await FirebaseFirestore.instance.collection('cong_viec').add({
+            "is_gd_them": false,
+            "ngay_gio_bat_dau": Timestamp.fromDate(DateTime.now()),
+            "ngay_post": Timestamp.fromDate(DateTime.now()),
+            "ten_cong_viec": tenCongViec,
+            "thoi_gian_cv": thoiGiancv,
+            "tieu_de": tieuDe,
+            //thu ki duyet
+            "tk_duyet": false,
+            "trang_thai": true,
+            "do_uu_tien": rool,
+            "tai_khoan_id": UserID.localUID,
+            // lỗi
+            "pb_huy": false,
+            "ngay_toi_thieu":
+                Timestamp.fromDate(DateTime.parse(_ngay_de_xuat.text)),
+            "ngay_gio_ket_thuc": Timestamp.fromDate(DateTime.now()),
+            "dia_diem_id": selectedPB,
+            "file_pdf": tenFilePDF,
+            "phong_ban_id": _phong_ban_ID,
+            "is_from_google_calendar": false
+          });
+          if (mounted) {
+            if (file != null) {
+              firebase_storage.UploadTask? task =
+                  await uploadFile(file!, ranDomTenFilePDF);
+            }
+            if (file1 != null) {
+              firebase_storage.UploadTask? task =
+                  await uploadFile(file1!, ranDomTenFilePDF1);
+            }
+            if (!kIsWeb) {
+              sendMail();
+            }
 
-          //PhongBanHomePage();
+            SendPushMessage(_FCMtoken, _tieu_deController.text,
+                _ten_PB + ' đã thêm cuộc hợp mới', 'pb_add_event');
+            addThongBao(
+                _ten_PB +
+                    ' đã thêm cuộc hợp mới' +
+                    ' Công việc: ' +
+                    _tieu_deController.text,
+                _ten_PB + ' đã thêm cuộc hợp mới',
+                idThuky,
+                todaynow);
+            //reset giá trị
+            resetTextField();
+            showDialog(
+              context: context,
+              builder: (context) {
+                return AlertDialog(
+                  backgroundColor: Colors.green,
+                  title: Center(
+                    child: Text(
+                      'Thêm công việc thành công',
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                  ),
+                );
+              },
+            );
+            //Nhảy qua list
+            final res = await Navigator.push<bool>(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ListCongViec(isRoteGD: false),
+              ),
+            );
+            //PhongBanHomePage();
+          }
         }
       } catch (e) {
         print(e);
@@ -156,34 +292,50 @@ class _AddEventState extends State<AddEvent> {
     // var _email = '';
     // var _app_PW = '';
     // var _ten = '';
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
+    // final FirebaseAuth auth = FirebaseAuth.instance;
+    // final User? user = auth.currentUser;
+    // final uid = user?.uid;
     final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
-    final userDoc = await usersCollection.doc(uid).get();
+    final userDoc = await usersCollection.doc(UserID.localUID).get();
     final _email = userDoc['email'];
     final _app_PW = userDoc['app_password'];
-    final _ten = userDoc['ten'];
+
+    final _id_phong_ban = userDoc['phong_ban_id'];
+
+    final phongBanCollection =
+        FirebaseFirestore.instance.collection('phong_ban');
+    final phongBanDoc = await phongBanCollection.doc(_id_phong_ban).get();
+    final _ten = phongBanDoc['ten_phong_ban'];
+    //final _ten = userDoc['ten'];
+
+    final _phong_ban_id = userDoc['phong_ban_id'];
+    if (userDoc['trang_thai'] == false) {
+      isTaiKhoanBiKhoa = false;
+    }
     _app_Password = _app_PW;
     _email_PB = _email;
     _ten_PB = _ten;
-    final thuKiCollection = FirebaseFirestore.instance
-        .collection('tai_khoan')
-        .where('quyen_han', isEqualTo: 'TK')
-        .limit(1)
-        .get();
+    _phong_ban_ID = _phong_ban_id;
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
         .collection('tai_khoan')
-        .where('quyen_han', isEqualTo: 'TK')
+        .where('quyen_han_id', isEqualTo: 'TK')
         .limit(1)
         .get();
     _email_TK = querySnapshot.docs.first['email'];
+    idThuky = querySnapshot.docs.first.id;
     print(_email_TK);
+
+    //     final diaDiemCollection =
+    //     FirebaseFirestore.instance.collection('dia_diem');
+    // final diadiemDoc =
+    //     await phongBanCollection.doc(eventDoc['dia_diem_id']).get();
+    // final _dia_Diem = phongBanDoc['ten_dia_diem'];
     //setState(() {});
     //print(tenPB);
   }
 
   void sendMail() async {
+    getDiaDiem();
     var userEmail = _email_PB;
     final smtpServer = gmail(_email_PB.toString(), _app_Password);
     final message = Message()
@@ -194,7 +346,7 @@ class _AddEventState extends State<AddEvent> {
       ..subject = 'Phòng ban ' + _ten_PB + ' thêm công việc mới'
       ..text = 'This is the plain text.\nThis is line 2 of the text part.'
       ..html =
-          "<h1>Công việc mới!</h1>\n<h2>-Tiêu đề:${_tieu_deController.text}</h2>\n<h2>-Tên(chi tiết):${_ten_cong_viecController.text}</h2>\n<h2>-Thời gian diễn ra: ${_thoi_gian_cvController.text} phút</h2>\n<h2>-Địa điểm: ${_dia_diemController.text}</h2>\n<h2>-Ngày đề xuất : ${_ngay_de_xuat.text}</h2>\n<h2>-Độ ưu tiên : ${rool}</h2>";
+          "<h1>Công việc mới!</h1>\n<h2>-Tiêu đề:${_tieu_deController.text}</h2>\n<h2>-Tên(chi tiết):${_ten_cong_viecController.text}</h2>\n<h2>-Thời gian diễn ra: ${_thoi_gian_cvController.text} phút</h2>\n<h2>-Địa điểm: ${tenDiaDiem}</h2>\n<h2>-Ngày đề xuất : ${_ngay_de_xuat.text}</h2>\n<h2>-Độ ưu tiên : ${rool}</h2>";
 
     try {
       final sendReport = await send(message, smtpServer);
@@ -207,7 +359,8 @@ class _AddEventState extends State<AddEvent> {
     }
   }
 
-  Future<firebase_storage.UploadTask?> uploadFile(File file) async {
+  Future<firebase_storage.UploadTask?> uploadFile(
+      File file, String tenFile) async {
     //var luuTenFilePDF = tenFilePDF;
     if (file == null || tenFilePDF == fileName + '_' + UserID.localUID + '_') {
       print('no picked file');
@@ -220,7 +373,7 @@ class _AddEventState extends State<AddEvent> {
     firebase_storage.Reference ref = firebase_storage.FirebaseStorage.instance
         .ref()
         .child('pdf_files')
-        .child('/${tenFilePDF}');
+        .child('/${tenFile}');
 
     final metadata = firebase_storage.SettableMetadata(
         contentType: 'file/pdf',
@@ -244,6 +397,12 @@ class _AddEventState extends State<AddEvent> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.grey[100],
+        title:
+            Text('Thêm công việc mới', style: TextStyle(color: Colors.black)),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         shrinkWrap: true,
@@ -262,16 +421,10 @@ class _AddEventState extends State<AddEvent> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text(
-                        'Thêm mới',
-                        style: TextStyle(fontSize: 30),
-                      ),
-                      SizedBox(
-                        height: 10,
-                      ),
                       TextFormField(
                         controller: _tieu_deController,
                         decoration: InputDecoration(
+                          labelText: 'Tiêu đề',
                           filled: true,
                           fillColor: Colors.white,
                           hintText: 'Tiêu đề',
@@ -304,6 +457,7 @@ class _AddEventState extends State<AddEvent> {
                       TextFormField(
                         controller: _ten_cong_viecController,
                         decoration: InputDecoration(
+                          labelText: 'Tên công việc',
                           filled: true,
                           fillColor: Colors.white,
                           hintText: 'Tên công việc',
@@ -338,6 +492,7 @@ class _AddEventState extends State<AddEvent> {
                         decoration: InputDecoration(
                           filled: true,
                           fillColor: Colors.white,
+                          labelText: 'Thời gian dự kiến(phút)',
                           hintText: 'Thời gian dự kiến(phút)',
                           enabled: true,
                           contentPadding: const EdgeInsets.only(
@@ -355,7 +510,7 @@ class _AddEventState extends State<AddEvent> {
                           RegExp regex = RegExp(r'^[0-9]+$');
 
                           if (value!.isEmpty) {
-                            return "Tên công việc không được để trống!";
+                            return "Thời gian dự kiến không được để trống!";
                           }
                           if (!regex.hasMatch(value)) {
                             return ("Bạn phải nhập số!");
@@ -373,34 +528,48 @@ class _AddEventState extends State<AddEvent> {
                       SizedBox(
                         height: 20,
                       ),
-                      TextFormField(
-                        controller: _dia_diemController,
-                        decoration: InputDecoration(
-                          filled: true,
-                          fillColor: Colors.white,
-                          hintText: 'Địa điểm',
-                          enabled: true,
-                          contentPadding: const EdgeInsets.only(
-                              left: 14.0, bottom: 8.0, top: 15.0),
-                          focusedBorder: OutlineInputBorder(
-                            borderSide: new BorderSide(color: Colors.white),
-                            borderRadius: new BorderRadius.circular(10),
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: new BorderSide(color: Colors.white),
-                            borderRadius: new BorderRadius.circular(10),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value!.isEmpty) {
-                            return "Địa điểm không được để trống";
-                          } else {
-                            return null;
-                          }
-                        },
-                        onSaved: (value) {
-                          _dia_diemController.text = value!;
-                        },
+                      Wrap(
+                        children: [
+                          StreamBuilder<QuerySnapshot>(
+                              stream: FirebaseFirestore.instance
+                                  .collection('dia_diem')
+                                  .where('trang_thai', isEqualTo: true)
+                                  .snapshots(),
+                              builder: (context, snapshot) {
+                                List<DropdownMenuItem> tenPBItems = [];
+                                if (!snapshot.hasData) {
+                                  const CircularProgressIndicator();
+                                } else {
+                                  final dsTenPB =
+                                      snapshot.data?.docs.reversed.toList();
+                                  tenPBItems.add(DropdownMenuItem(
+                                      value: '0',
+                                      child: Text('Chọn địa điểm')));
+                                  for (var tenPhongBan in dsTenPB!) {
+                                    tenDiaDiem = tenPhongBan['ten_dia_diem'];
+                                    tenPBItems.add(
+                                      DropdownMenuItem(
+                                        value: tenPhongBan.id,
+                                        child: Text(
+                                          tenPhongBan['ten_dia_diem'],
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                }
+                                return DropdownButton(
+                                  items: tenPBItems,
+                                  onChanged: (tenPBNewValue) {
+                                    print(tenPBNewValue);
+                                    setState(() {
+                                      selectedPB = tenPBNewValue;
+                                    });
+                                  },
+                                  value: selectedPB,
+                                  isExpanded: true,
+                                );
+                              }),
+                        ],
                       ),
                       SizedBox(
                         height: 20,
@@ -408,6 +577,7 @@ class _AddEventState extends State<AddEvent> {
                       Wrap(
                         children: [
                           TextFormField(
+                            readOnly: true,
                             decoration: InputDecoration(
                               labelText: 'Ngày đề xuất',
                               filled: true,
@@ -448,6 +618,105 @@ class _AddEventState extends State<AddEvent> {
                       ),
                       Wrap(
                         children: [
+                          kIsWeb
+                              ? Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                          'Không thể chọn file trên trang web'),
+                                      flex: 8,
+                                    )
+                                  ],
+                                )
+                              : Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 8,
+                                      child: MaterialButton(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(20.0))),
+                                        elevation: 5.0,
+                                        height: 40,
+                                        onPressed: () async {
+                                          final path =
+                                              await FlutterDocumentPicker
+                                                  .openDocument();
+                                          if (path == null) {
+                                            print('path null');
+                                          } else if ((path.split('.').last) !=
+                                              'pdf') {
+                                            showDialog(
+                                              context: context,
+                                              builder: (context) {
+                                                return AlertDialog(
+                                                  backgroundColor:
+                                                      Color.fromARGB(
+                                                          255, 255, 0, 0),
+                                                  title: Center(
+                                                    child: Text(
+                                                      "Hãy chọn file pdf",
+                                                      style: const TextStyle(
+                                                          color: Colors.white),
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            );
+                                          } else {
+                                            print(path);
+                                            file = File(path);
+                                            fileName =
+                                                file!.path.split('/').last;
+                                            setState(() {
+                                              isfileNameExsited = true;
+                                              print('file name:' + fileName);
+                                              ranDomTenFilePDF = getRandString(
+                                                  fileName.length,
+                                                  UserID.localUID,
+                                                  fileName);
+                                              print('random name:' +
+                                                  ranDomTenFilePDF);
+                                            });
+                                          }
+                                        },
+                                        child: Text(
+                                          isfileNameExsited
+                                              ? fileName
+                                              : 'Chọn file pdf',
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                          ),
+                                        ),
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: MaterialButton(
+                                        shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.all(
+                                                Radius.circular(20.0))),
+                                        elevation: 5.0,
+                                        height: 40,
+                                        child: Icon(Icons.close_sharp),
+                                        onPressed: () async {
+                                          //clear fileName setState
+                                          setState(() {
+                                            file = File('');
+                                            fileName = '';
+                                            isfileNameExsited = false;
+                                            ranDomTenFilePDF = '';
+                                            print(fileName);
+                                            print(getRandString(fileName.length,
+                                                fileName, UserID.localUID));
+                                            print(isfileNameExsited.toString());
+                                          });
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
                           Row(
                             children: [
                               Expanded(
@@ -459,30 +728,47 @@ class _AddEventState extends State<AddEvent> {
                                   elevation: 5.0,
                                   height: 40,
                                   onPressed: () async {
-                                    final path = await FlutterDocumentPicker
+                                    final path1 = await FlutterDocumentPicker
                                         .openDocument();
-                                    if (path == null) {
+                                    if (path1 == null) {
                                       print('path null');
+                                    } else if ((path1.split('.').last) !=
+                                        'pdf') {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) {
+                                          return AlertDialog(
+                                            backgroundColor:
+                                                Color.fromARGB(255, 255, 0, 0),
+                                            title: Center(
+                                              child: Text(
+                                                "Hãy chọn file pdf",
+                                                style: const TextStyle(
+                                                    color: Colors.white),
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      );
                                     } else {
-                                      print(path);
-                                      file = File(path);
-                                      fileName = file!.path.split('/').last;
-
+                                      print(path1);
+                                      file1 = File(path1);
+                                      fileName1 = file1!.path.split('/').last;
                                       setState(() {
-                                        isfileNameExsited = true;
-                                        print('file name:' + fileName);
-                                        ranDomTenFilePDF = getRandString(
-                                            fileName.length,
+                                        isfileNameExsited1 = true;
+                                        print('file name:' + fileName1);
+                                        ranDomTenFilePDF1 = getRandString(
+                                            fileName1.length,
                                             UserID.localUID,
-                                            fileName);
+                                            fileName1);
                                         print(
-                                            'random name:' + ranDomTenFilePDF);
+                                            'random name:' + ranDomTenFilePDF1);
                                       });
                                     }
                                   },
                                   child: Text(
-                                    isfileNameExsited
-                                        ? fileName
+                                    isfileNameExsited1
+                                        ? fileName1
                                         : 'Chọn file pdf',
                                     style: TextStyle(
                                       fontSize: 20,
@@ -503,13 +789,14 @@ class _AddEventState extends State<AddEvent> {
                                   onPressed: () async {
                                     //clear fileName setState
                                     setState(() {
-                                      file = File('');
-                                      fileName = '';
-                                      isfileNameExsited = false;
-                                      print(fileName);
-                                      print(getRandString(fileName.length,
-                                          fileName, UserID.localUID));
-                                      print(isfileNameExsited.toString());
+                                      file1 = File('');
+                                      fileName1 = '';
+                                      isfileNameExsited1 = false;
+                                      ranDomTenFilePDF1 = '';
+                                      print(fileName1);
+                                      print(getRandString(fileName1.length,
+                                          fileName1, UserID.localUID));
+                                      print(isfileNameExsited1.toString());
                                     });
                                   },
                                 ),
@@ -565,8 +852,18 @@ class _AddEventState extends State<AddEvent> {
                         elevation: 5.0,
                         height: 40,
                         onPressed: () {
-                          _addEvent();
                           //getName();
+                          // if (ranDomTenFilePDF == '') {
+                          //   chuoi = ranDomTenFilePDF1;
+                          // } else if (ranDomTenFilePDF1 == '') {
+                          //   chuoi = ranDomTenFilePDF;
+                          // } else {
+                          //   chuoi = ranDomTenFilePDF +
+                          //       '_=)()(=_' +
+                          //       ranDomTenFilePDF1;
+                          // }
+                          _addEvent();
+                          //  print(chuoi);
                         },
                         child: Text(
                           "Lưu",

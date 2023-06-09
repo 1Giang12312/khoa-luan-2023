@@ -7,6 +7,7 @@ import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 
 import 'package:khoa_luan1/pages/thuki/duyet_event_main.dart';
+import 'package:khoa_luan1/pages/thuki/list_tai_khoan_details.dart';
 import '../../list_event.dart';
 import '../../data/selectedDay.dart';
 import 'duyet_event_main.dart';
@@ -15,16 +16,15 @@ import 'list_phong_ban_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/UserID.dart';
 
-class ListPhongBan extends StatefulWidget {
-  bool isRouteGD;
-  ListPhongBan({super.key, required this.isRouteGD});
+class ListTaiKhoan extends StatefulWidget {
+  ListTaiKhoan({super.key});
 
   @override
-  State<ListPhongBan> createState() => _ListPhongBanState();
+  State<ListTaiKhoan> createState() => _ListTaiKhoanState();
 }
 
 // Timestamp.fromd
-class _ListPhongBanState extends State<ListPhongBan> {
+class _ListTaiKhoanState extends State<ListTaiKhoan> {
   // late Map<DateTime, List<Event>> _events;
 
   var _event;
@@ -33,7 +33,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
   @override
   void initState() {
     super.initState();
-    _event = FirebaseFirestore.instance.collection('phong_ban');
+    _event = FirebaseFirestore.instance.collection('tai_khoan');
   }
 
   @override
@@ -42,7 +42,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title:
-            Text('Danh sách phòng ban', style: TextStyle(color: Colors.white)),
+            Text('Danh sách tài khoản', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -89,7 +89,6 @@ class _ListPhongBanState extends State<ListPhongBan> {
                 //     ),
                 //   ],
                 // ),
-
                 SizedBox(
                   width: 10,
                 ),
@@ -99,7 +98,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
-                        hintText: 'Tìm phòng ban(theo tên)',
+                        hintText: 'Tìm tài khoản(theo tên)',
                         enabled: true,
                         contentPadding: const EdgeInsets.only(
                             left: 14.0, bottom: 8.0, top: 8.0),
@@ -115,10 +114,9 @@ class _ListPhongBanState extends State<ListPhongBan> {
                       onChanged: (value) {
                         setState(() {
                           _event = FirebaseFirestore.instance
-                              .collection('phong_ban')
-                              .where('ten_phong_ban',
-                                  isGreaterThanOrEqualTo: value)
-                              .orderBy('ten_phong_ban')
+                              .collection('tai_khoan')
+                              .where('ten', isGreaterThanOrEqualTo: value)
+                              .orderBy('ten')
                               .startAt([value]).endAt([value + '\uf8ff']);
                         });
                       },
@@ -149,7 +147,6 @@ class _ListPhongBanState extends State<ListPhongBan> {
                     if (documentSnapshot.id == UserID.localUID) {
                       return Container(height: 0);
                     }
-
                     return Card(
                       margin: const EdgeInsets.all(10),
                       child: ListTile(
@@ -157,9 +154,9 @@ class _ListPhongBanState extends State<ListPhongBan> {
                           final res = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ListPhongBanDetails(
-                                  documentSnapshot.id, widget.isRouteGD),
-                            ),
+                                builder: (_) => ListTaiKhoanDetails(
+                                      userIDString: documentSnapshot.id,
+                                    )),
                           );
                           print(documentSnapshot.id);
                           //Navigator.of(context).maybePop();
@@ -175,7 +172,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
                           //   ),
                           // );
                         },
-                        title: Text(documentSnapshot['ten_phong_ban']),
+                        title: Text(documentSnapshot['ten']),
                         subtitle: Text(documentSnapshot['email']),
                         // trailing: PopupMenuButton(
                         //     icon: Icon(Icons.more_vert),

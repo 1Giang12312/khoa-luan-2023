@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -26,86 +28,245 @@ Timestamp endOfWeekTimestamp = Timestamp.fromDate(endOfWeek);
 class _ToDoListTuanState extends State<ToDoListTuan> {
   // late Map<DateTime, List<Event>> _events;
   var _event;
+  var _phong_ban_id = '';
+  late bool isLoading = false;
+  var selectedValue = 'Tất cả';
+  List<QueryDocumentSnapshot> listEvent = [];
+  StreamController<List<DocumentSnapshot>> _listStreamController =
+      StreamController<List<DocumentSnapshot>>();
   @override
   void initState() {
     super.initState();
-    _event = FirebaseFirestore.instance
-        .collection('cong_viec')
-        .where('tai_khoan_id', isEqualTo: UserID.localUID)
-        .where('tk_duyet', isEqualTo: true)
-        .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: startOfWeekTimestamp)
-        .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp);
     print(UserID.localUID);
+    // getPhongBanID();
+    // getData();
+    getPhongBanID();
   }
 
-// Định dạng ngày tháng
+  void getData() async {
+    if (selectedValue == 'Đã diễn ra') {
+      // _event = FirebaseFirestore.instance
+      //     .collection('cong_viec')
+      //     .where('phong_ban_id', isEqualTo: _phong_ban_id)
+      //     .where('tk_duyet', isEqualTo: true)
+      //     .where('trang_thai', isEqualTo: false)
+      //     .where('ngay_gio_bat_dau',
+      //         isGreaterThanOrEqualTo: startOfWeekTimestamp)
+      //     .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp);
+
+      listEvent = [];
+      final eventRef = await FirebaseFirestore.instance
+          .collection("cong_viec")
+          .where('tk_duyet', isEqualTo: true)
+          .where('ngay_gio_bat_dau',
+              isGreaterThanOrEqualTo: startOfWeekTimestamp)
+          .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp)
+          .where('trang_thai', isEqualTo: false)
+          .get();
+      for (var doc in eventRef.docs) {
+        // String cityName = doc.get("name");
+        if (doc['phong_ban_id'].toString().contains(_phong_ban_id)) {
+          listEvent.add(doc);
+          print(doc['ten_cong_viec']);
+        }
+      }
+      _listStreamController.sink.add(listEvent);
+    } else if (selectedValue == 'Chưa diễn ra') {
+      // _event = FirebaseFirestore.instance
+      //     .collection('cong_viec')
+      //     .where('phong_ban_id', isEqualTo: _phong_ban_id)
+      //     .where('tk_duyet', isEqualTo: true)
+      //     .where('trang_thai', isEqualTo: true)
+      //     .where('ngay_gio_bat_dau',
+      //         isGreaterThanOrEqualTo: startOfWeekTimestamp)
+      //     .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp);
+
+      listEvent = [];
+      final eventRef = await FirebaseFirestore.instance
+          .collection("cong_viec")
+          .where('tk_duyet', isEqualTo: true)
+          .where('ngay_gio_bat_dau',
+              isGreaterThanOrEqualTo: startOfWeekTimestamp)
+          .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp)
+          .where('trang_thai', isEqualTo: true)
+          .get();
+      for (var doc in eventRef.docs) {
+        // String cityName = doc.get("name");
+        if (doc['phong_ban_id'].toString().contains(_phong_ban_id)) {
+          listEvent.add(doc);
+          print(doc['ten_cong_viec']);
+        }
+      }
+      _listStreamController.sink.add(listEvent);
+    } else {
+      // _event = FirebaseFirestore.instance
+      //     .collection('cong_viec')
+      //     .where('phong_ban_id', isEqualTo: _phong_ban_id)
+      //     .where('tk_duyet', isEqualTo: true)
+      //     .where('ngay_gio_bat_dau',
+      //         isGreaterThanOrEqualTo: startOfWeekTimestamp)
+      //     .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp);
+
+      listEvent = [];
+      final eventRef = await FirebaseFirestore.instance
+          .collection("cong_viec")
+          .where('tk_duyet', isEqualTo: true)
+          .where('ngay_gio_bat_dau',
+              isGreaterThanOrEqualTo: startOfWeekTimestamp)
+          .where('ngay_gio_bat_dau', isLessThan: endOfWeekTimestamp)
+          // .where('trang_thai', isEqualTo: false)
+          .get();
+      for (var doc in eventRef.docs) {
+        // String cityName = doc.get("name");
+        if (doc['phong_ban_id'].toString().contains(_phong_ban_id)) {
+          listEvent.add(doc);
+          print(doc['ten_cong_viec']);
+        }
+      }
+      _listStreamController.sink.add(listEvent);
+    }
+  }
+
+  getPhongBanID() async {
+    setState(() {
+      isLoading = true;
+    });
+    final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
+    final userDoc = await usersCollection.doc(UserID.localUID).get();
+    _phong_ban_id = userDoc['phong_ban_id'];
+    setState(() {
+      isLoading = false;
+      getData();
+    });
+    //getData();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: Colors.grey[100],
         title:
             Text('Lịch trình của tuần', style: TextStyle(color: Colors.black)),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            StreamBuilder(
-              builder: (BuildContext context,
-                  AsyncSnapshot<QuerySnapshot> snapshot) {
-                if (!snapshot.hasData) {
-                  return Center(
-                    child: CircularProgressIndicator(),
-                  );
-                }
-                return SingleChildScrollView(
-                    child: ListView.builder(
-                  physics: ClampingScrollPhysics(),
-                  shrinkWrap: true,
-                  itemCount: snapshot.data!.docs.length,
-                  itemBuilder: (context, index) {
-                    final DocumentSnapshot documentSnapshot =
-                        snapshot.data!.docs[index];
-                    //covert
-                    DateTime datetime =
-                        documentSnapshot['ngay_gio_bat_dau'].toDate();
-                    String formattedDate =
-                        DateFormat('dd/MM/yyyy').format(datetime);
-                    String formattedTime = DateFormat('HH:mm').format(datetime);
-                    return Card(
-                      margin: const EdgeInsets.all(10),
-                      child: ListTile(
-                        onTap: () async {
-                          final res = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ItemDetails(documentSnapshot.id),
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  Text(
+                    "Đang tải!",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 20,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 10,
+                      ),
+                      Text('Lọc:'),
+                      SizedBox(
+                        width: 10,
+                      ),
+                      DropdownButton(
+                        hint: Text('Chọn tùy chọn'),
+                        value: selectedValue,
+                        onChanged: (newValue) {
+                          setState(() {
+                            selectedValue = newValue.toString()!;
+                            getData();
+                          });
+                        },
+                        items: [
+                          DropdownMenuItem(
+                            child: Text('Tất cả'),
+                            value: 'Tất cả',
+                          ),
+                          DropdownMenuItem(
+                            child: Text('Đã diễn ra'),
+                            value: 'Đã diễn ra',
+                          ),
+                          DropdownMenuItem(
+                            child: Text('Chưa diễn ra'),
+                            value: 'Chưa diễn ra',
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  StreamBuilder<List<DocumentSnapshot>>(
+                    builder: (BuildContext context,
+                        AsyncSnapshot<List<DocumentSnapshot>> snapshot) {
+                      if (!snapshot.hasData) {
+                        return Center(
+                          child: CircularProgressIndicator(),
+                        );
+                      }
+                      return SingleChildScrollView(
+                          child: ListView.builder(
+                        physics: ClampingScrollPhysics(),
+                        shrinkWrap: true,
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          final DocumentSnapshot documentSnapshot =
+                              snapshot.data![index];
+                          //covert
+                          DateTime datetime =
+                              documentSnapshot['ngay_gio_bat_dau'].toDate();
+                          String formattedDate =
+                              DateFormat('dd/MM/yyyy').format(datetime);
+                          String formattedTime =
+                              DateFormat('HH:mm').format(datetime);
+
+                          DateTime datetimeKT =
+                              documentSnapshot['ngay_gio_ket_thuc'].toDate();
+
+                          String formattedTimeKT =
+                              DateFormat('HH:mm').format(datetimeKT);
+                          return Card(
+                            margin: const EdgeInsets.all(10),
+                            child: ListTile(
+                              onTap: () async {
+                                final res = await Navigator.push<bool>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        ItemDetails(documentSnapshot.id),
+                                  ),
+                                );
+                                print(documentSnapshot.id);
+                              },
+                              title: Text(documentSnapshot['tieu_de']),
+                              subtitle: Text(documentSnapshot['ten_cong_viec']),
+                              trailing: Text('Ngày bắt đầu ' +
+                                  formattedDate.toString() +
+                                  '\nLúc ' +
+                                  formattedTime +
+                                  ' đến ' +
+                                  formattedTimeKT),
                             ),
                           );
-                          print(documentSnapshot.id);
                         },
-                        title: Text(documentSnapshot['tieu_de']),
-                        subtitle: Text(documentSnapshot['ten_cong_viec']),
-                        trailing: Text('Ngày bắt đầu ' +
-                            formattedDate.toString() +
-                            '\nLúc ' +
-                            formattedTime),
-                        leading: Icon(
-                          Icons.check_box,
-                          color: Colors.green,
-                        ),
-                      ),
-                    );
-                  },
-                ));
-              },
-              stream: _event.snapshots(),
-            )
-          ],
-        ),
-      ),
+                      ));
+                    },
+                    stream: _listStreamController.stream,
+                  )
+                ],
+              ),
+            ),
     );
   }
 }

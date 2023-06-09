@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Event {
-  final bool gd_huy;
+  final bool is_gd_them;
   final bool tk_duyet;
   final DateTime ngay_gio_bat_dau;
   final DateTime ngay_post;
@@ -11,10 +11,11 @@ class Event {
   final bool trang_thai;
   final String tai_khoan_id;
   final DateTime ngay_gio_ket_thuc;
-  final String dia_diem;
+  final String dia_diem_id;
   final String id;
+  final bool is_from_google_calendar;
   Event({
-    required this.gd_huy,
+    required this.is_gd_them,
     required this.tk_duyet,
     required this.ngay_gio_bat_dau,
     required this.ngay_post,
@@ -24,7 +25,8 @@ class Event {
     required this.trang_thai,
     required this.tai_khoan_id,
     required this.ngay_gio_ket_thuc,
-    required this.dia_diem,
+    required this.dia_diem_id,
+    required this.is_from_google_calendar,
     required this.id,
   });
 
@@ -32,7 +34,7 @@ class Event {
       [SnapshotOptions? options]) {
     final data = snapshot.data()!;
     return Event(
-      gd_huy: data['gd_huy'],
+      is_gd_them: data['is_gd_them'],
       ngay_gio_bat_dau: data['ngay_gio_bat_dau'].toDate(),
       ngay_post: data['ngay_post'].toDate(),
       tai_khoan_id: data['tai_khoan_id'],
@@ -42,14 +44,15 @@ class Event {
       tk_duyet: data['tk_duyet'],
       trang_thai: data['trang_thai'],
       ngay_gio_ket_thuc: data['ngay_gio_ket_thuc'].toDate(),
-      dia_diem: data['dia_diem'],
+      dia_diem_id: data['dia_diem_id'],
+      is_from_google_calendar: data['is_from_google_calendar'],
       id: snapshot.id,
     );
   }
 
   Map<String, Object?> toFirestore() {
     return {
-      "gd_huy": gd_huy,
+      "is_gd_them": is_gd_them,
       "ngay_gio_bat_dau": Timestamp.fromDate(ngay_gio_bat_dau),
       "ngay_post": Timestamp.fromDate(ngay_post),
       "tai_khoan_id": tai_khoan_id,
@@ -59,7 +62,8 @@ class Event {
       "tk_duyet": tk_duyet,
       "trang_thai": trang_thai,
       "ngay_gio_ket_thuc": ngay_gio_ket_thuc,
-      "dia_diem": dia_diem
+      "dia_diem_id": dia_diem_id,
+      "is_from_google_calendar": is_from_google_calendar
     };
   }
 }

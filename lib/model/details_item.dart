@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DetailEvent {
-  late bool gd_huy;
+  late bool is_gd_them;
   late bool tk_duyet;
   late DateTime ngay_gio_bat_dau;
   late DateTime ngay_post;
@@ -13,7 +13,7 @@ class DetailEvent {
   late String do_uu_tien;
   late String id;
   DetailEvent({
-    required this.gd_huy,
+    required this.is_gd_them,
     required this.tk_duyet,
     required this.ngay_gio_bat_dau,
     required this.ngay_post,

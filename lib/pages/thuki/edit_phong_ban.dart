@@ -3,31 +3,22 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
-import 'data/UserID.dart';
 
-class AccountInfor extends StatefulWidget {
-  AccountInfor({super.key, required this.userIDString});
-  String userIDString;
+class EditPhongBan extends StatefulWidget {
+  EditPhongBan({super.key, required this.phongBanID});
+  String phongBanID;
   @override
-  State<AccountInfor> createState() => _AccountInforState();
+  State<EditPhongBan> createState() => _EditPhongBanState();
 }
 
-class _AccountInforState extends State<AccountInfor> {
-  final TextEditingController tenController = new TextEditingController();
+class _EditPhongBanState extends State<EditPhongBan> {
+  final TextEditingController tenPhongBanController =
+      new TextEditingController();
   final TextEditingController emailController = new TextEditingController();
   final TextEditingController sdtController = new TextEditingController();
-  final TextEditingController appPasswordController =
-      new TextEditingController();
-  final TextEditingController passwordController = new TextEditingController();
   final TextEditingController faxController = new TextEditingController();
-  final TextEditingController quyenHanController = new TextEditingController();
-  final TextEditingController phongBanController = new TextEditingController();
 
-  bool _isObscure = true;
-  bool _isObscure2 = true;
-  bool _isReadOnly = true;
   final _formkey = GlobalKey<FormState>();
-  final _auth = FirebaseAuth.instance;
   late bool isLoading = false;
   @override
   void initState() {
@@ -45,20 +36,20 @@ class _AccountInforState extends State<AccountInfor> {
         await FirebaseFirestore.instance
             // .collection('tai_khoan')
             // .doc(uid)
-            .collection('tai_khoan')
-            .doc(widget.userIDString)
+            .collection('phong_ban')
+            .doc(widget.phongBanID)
             .update({
-          "app_password": appPasswordController.text,
-          "ten": tenController.text,
+          "ten_phong_ban": tenPhongBanController.text,
           "so_dien_thoai": sdtController.text,
-          "fax": faxController.text
+          "fax": faxController.text,
+          "email": emailController.text
         });
 
         if (mounted) {
           print('sua thanh cong');
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: const Text('Sửa thông tin cá nhân thành công'),
+            content: const Text('Sửa thông tin phòng ban thành công'),
             action: SnackBarAction(
               label: 'Hủy',
               onPressed: () {},
@@ -75,12 +66,12 @@ class _AccountInforState extends State<AccountInfor> {
     setState(() {
       isLoading = true;
     });
-    final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
-    final userDoc = await usersCollection.doc(widget.userIDString).get();
-    tenController.text = userDoc['ten'];
+    final usersCollection = FirebaseFirestore.instance.collection('phong_ban');
+    final userDoc = await usersCollection.doc(widget.phongBanID).get();
+    tenPhongBanController.text = userDoc['ten_phong_ban'];
     emailController.text = userDoc['email'];
     sdtController.text = userDoc['so_dien_thoai'];
-    appPasswordController.text = userDoc['app_password'];
+    faxController.text = userDoc['fax'];
     // if (userDoc['quyen_han'] == 'TK') {
     //   quyenHanController.text = 'Thư kí';
     // } else if (userDoc['quyen_han'] == 'GD') {
@@ -88,27 +79,7 @@ class _AccountInforState extends State<AccountInfor> {
     // } else {
     //   quyenHanController.text = 'Phòng ban';
     // }
-    final quyenhanCollection =
-        FirebaseFirestore.instance.collection('quyen_han');
-    final taikhoanCollection =
-        FirebaseFirestore.instance.collection('tai_khoan');
 
-    final userID = UserID.localUID;
-
-    final userQuyenHanDoc = await taikhoanCollection.doc(userID).get();
-    final quyenHanID = userQuyenHanDoc['quyen_han_id'];
-    final quyenHanDoc = await quyenhanCollection.doc(quyenHanID).get();
-    final ten_quyen_han = quyenHanDoc['ten_quyen_han'];
-    quyenHanController.text = ten_quyen_han;
-
-    final phongBanCollection =
-        FirebaseFirestore.instance.collection('phong_ban');
-
-    final userPhongBanDoc = await taikhoanCollection.doc(userID).get();
-    final phongBanID = userPhongBanDoc['phong_ban_id'];
-    final phongBanDoc = await phongBanCollection.doc(phongBanID).get();
-    final ten_phong_ban = phongBanDoc['ten_phong_ban'];
-    phongBanController.text = ten_phong_ban;
     setState(() {
       isLoading = false;
     });
@@ -119,7 +90,7 @@ class _AccountInforState extends State<AccountInfor> {
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('Thông tin cá nhân ',
+        title: Text('Sửa thông tin phòng ban ',
             style: TextStyle(color: Color.fromARGB(255, 255, 255, 255))),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
@@ -162,7 +133,7 @@ class _AccountInforState extends State<AccountInfor> {
                                 crossAxisAlignment: CrossAxisAlignment.center,
                                 children: [
                                   TextFormField(
-                                    controller: tenController,
+                                    controller: tenPhongBanController,
                                     decoration: InputDecoration(
                                       labelText: 'Tên',
                                       filled: true,
@@ -196,7 +167,7 @@ class _AccountInforState extends State<AccountInfor> {
                                     height: 10,
                                   ),
                                   TextFormField(
-                                    //readOnly: true,
+                                    readOnly: true,
                                     controller: emailController,
                                     decoration: InputDecoration(
                                       labelText: 'Email',
@@ -222,12 +193,12 @@ class _AccountInforState extends State<AccountInfor> {
                                       if (value!.length == 0) {
                                         return "Email không được để trống!";
                                       }
-                                      // if (!RegExp(
-                                      //         "^[a-zA-Z0-9+_.-]+@gmail.com") //regexp agu mail
-                                      //     .hasMatch(value)) {
-                                      //   return ("Hãy nhập mail");
-                                      // }
-                                      else {
+                                      if (!RegExp("^[a-zA-Z0-9+_.-]+@gmail.com") //regexp agu mail
+                                              .hasMatch(value) &&
+                                          !RegExp("^[a-zA-Z0-9+_.-]+@agu.edu.vn") //regexp agu mail
+                                              .hasMatch(value)) {
+                                        return ("Hãy nhập đúng mail");
+                                      } else {
                                         return null;
                                       }
                                     },
@@ -281,24 +252,15 @@ class _AccountInforState extends State<AccountInfor> {
                                     height: 10,
                                   ),
                                   TextFormField(
-                                    obscureText: _isObscure,
-                                    controller: appPasswordController,
+                                    controller: faxController,
                                     decoration: InputDecoration(
-                                      suffixIcon: IconButton(
-                                          icon: Icon(_isObscure
-                                              ? Icons.visibility_off
-                                              : Icons.visibility),
-                                          onPressed: () {
-                                            setState(() {
-                                              _isObscure = !_isObscure;
-                                            });
-                                          }),
                                       filled: true,
                                       fillColor: Colors.white,
-                                      labelText: 'App password',
+                                      labelText: 'Số fax',
+                                      hintText: 'Số fax(hoặc không)',
                                       enabled: true,
                                       contentPadding: const EdgeInsets.only(
-                                          left: 14.0, bottom: 8.0, top: 15.0),
+                                          left: 14.0, bottom: 8.0, top: 8.0),
                                       focusedBorder: OutlineInputBorder(
                                         borderSide:
                                             new BorderSide(color: Colors.white),
@@ -313,67 +275,22 @@ class _AccountInforState extends State<AccountInfor> {
                                       ),
                                     ),
                                     validator: (value) {
-                                      if (value!.length == 0) {
-                                        return "App password không được để trống!";
+                                      RegExp regex = RegExp(r'^[0-9]+$');
+                                      if (value!.length != 0) {
+                                        if (!regex.hasMatch(value!)) {
+                                          return ("Bạn phải nhập số!");
+                                        }
+                                        if (value!.length < 10 ||
+                                            value!.length > 11) {
+                                          return ('Bạn phải nhập 10 số hoặc 11 số');
+                                        } else {
+                                          return null;
+                                        }
                                       } else {
-                                        return null;
+                                        value = '';
                                       }
                                     },
                                     onChanged: (value) {},
-                                  ),
-                                  SizedBox(
-                                    height: 10,
-                                  ),
-                                  TextFormField(
-                                    controller: quyenHanController,
-                                    readOnly: true,
-                                    decoration: InputDecoration(
-                                      labelText: 'Quyền hạn',
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      enabled: true,
-                                      contentPadding: const EdgeInsets.only(
-                                          left: 14.0, bottom: 8.0, top: 8.0),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                      enabledBorder: UnderlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(
-                                    height: 10,
-                                  ),
-                                  TextFormField(
-                                    controller: phongBanController,
-                                    readOnly: true,
-                                    decoration: InputDecoration(
-                                      labelText: 'Phòng ban',
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      enabled: true,
-                                      contentPadding: const EdgeInsets.only(
-                                          left: 14.0, bottom: 8.0, top: 8.0),
-                                      focusedBorder: OutlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                      enabledBorder: UnderlineInputBorder(
-                                        borderSide:
-                                            new BorderSide(color: Colors.white),
-                                        borderRadius:
-                                            new BorderRadius.circular(20),
-                                      ),
-                                    ),
                                   ),
                                   SizedBox(
                                     height: 10,

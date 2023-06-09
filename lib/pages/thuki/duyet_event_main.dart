@@ -6,10 +6,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
 
 import 'package:khoa_luan1/data/FCMtoken.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
+import '../../dashboard.dart';
 import '../../login.dart';
 import 'duyet_event_list.dart';
 import '../../data/selectedDay.dart';
@@ -18,6 +20,9 @@ import 'package:intl/intl.dart';
 import 'package:khoa_luan1/model/event.dart';
 import '../../data/selectedDay.dart';
 import 'package:http/http.dart' as http;
+import 'dart:convert' as convert;
+import '../../services/send_push_massage.dart';
+import '../../data/UserID.dart';
 
 class DuyetEventMain extends StatefulWidget {
   @override
@@ -25,6 +30,7 @@ class DuyetEventMain extends StatefulWidget {
   final DateTime firstDate;
   final DateTime lastDate;
   final DateTime? selectedDate;
+
   const DuyetEventMain(
       {Key? key,
       required this.firstDate,
@@ -81,7 +87,15 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   var _ngay_post = '';
   var _ngay_toi_thieu = '';
   var fCMToken = '';
-
+  var fCMTokenGD = '';
+  var _emailGD = '';
+  late bool isLoading = false;
+  late bool isLoadingGoogleCalendar = false;
+  var idGiamDoc = '';
+  bool _isChecked = false;
+  late Timestamp timestampBDGoolgeSheet;
+  late Timestamp timestampKTGoolgeSheet;
+  var todaynow = DateTime.now().toString();
   //final daytimeSang = DateTime(now.year, now.month, now.day, 23, 59, 59);
   //Timestamp sang7h=Timestamp.fromDate(startOfToday);
   //Timestamp _xet_trang_thai_ts = Timestamp.fromDate(now);
@@ -103,6 +117,80 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     });
   }
 
+// Future<List<User>> getUsers() async {
+//   List<User> userList = [];
+//   QuerySnapshot querySnapshot =
+//       await FirebaseFirestore.instance.collection('users').get();
+//   querySnapshot.docs.forEach((document) {
+//     User user = User(name: document.data()['name'], email: document.data()['email']);
+//     userList.add(user);
+//   });
+//   return userList;
+// }
+// Future<List<String>> getNamesFromFirestore() async {
+//   List<String> namesList = [];
+//   await FirebaseFirestore.instance
+//       .collection('users')
+//       .get()
+//       .then((QuerySnapshot querySnapshot) {
+//     querySnapshot.docs.forEach((doc) {
+//       String name = doc.data()['name'];
+//       namesList.add(name);
+//     });
+//   });
+//   return namesList;
+// }
+
+  getDataFromFirestoreAndSendPushNT() async {
+    // List<String> dataList = [];
+    final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
+    final ordersCollection = FirebaseFirestore.instance.collection('cong_viec');
+
+    final orderId = widget.eventID;
+
+    final orderDoc = await ordersCollection.doc(orderId).get();
+    final userId = orderDoc['tai_khoan_id'];
+    final userDoc = await usersCollection.doc(userId).get();
+    final id_phong_ban = userDoc['phong_ban_id'];
+
+    QuerySnapshot snapshot = await FirebaseFirestore.instance
+        .collection('tai_khoan')
+        .where('phong_ban_id', isEqualTo: id_phong_ban)
+        .get();
+
+    snapshot.docs.forEach((doc) {
+      if (doc.exists) {
+        Map<String, dynamic>? data = doc.data() as Map<String, dynamic>?;
+        if (data != null && data.containsKey('FCMtoken')) {
+          String fieldValue = data['FCMtoken'].toString();
+          String idPhongBan = doc.id;
+          SendPushMessage(
+              fieldValue,
+              'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              _tieu_deController.text + ' đã được duyệt!!',
+              'tk_duyet');
+          addThongBao(
+              'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              _tieu_deController.text +
+                  ' đã được duyệt!!' +
+                  _tieu_deController.text +
+                  ' đã được duyệt!!',
+              idPhongBan,
+              todaynow);
+          //gửi FCMtoken cho từng fieldvalue
+          //listFCMtoken.add(fieldValue);
+          //print(fieldValue);
+          // xử lý giá trị fieldValue ở đây
+        } else {
+          // xử lý trường hợp không tìm thấy dữ liệu hoặc không có trường fieldName
+          print('Lỗi fcm');
+        }
+      }
+    });
+
+    //return dataList;
+  }
+
   getFCMToken() async {
     final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
     final ordersCollection = FirebaseFirestore.instance.collection('cong_viec');
@@ -114,51 +202,44 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     final userDoc = await usersCollection.doc(userId).get();
     final FCMToken = userDoc['FCMtoken'];
     fCMToken = FCMToken;
-    print(fCMToken); // thanh cong
-  }
 
-  void SendPushMessage(String token, String body, String title) async {
-    try {
-      await http.post(
-        Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        headers: <String, String>{
-          'Content-Type': 'application/json',
-          'Authorization':
-              'key=AAAAljFhcnQ:APA91bG5G3b-EvPM945TAhKrmN7n0ifmpNDNlhynEvo1FoSBD2KLHiUub2S2g2GscO4U0V5Sn5Ull3u4Ca0G1hN6Hzw5UlOwgUCYEgcOHEOP8q3_7kbAgorA633txp_raKsYXpoX_1h_',
-        },
-        body: jsonEncode(
-          <String, dynamic>{
-            'priority': 'high',
-            'data': <String, dynamic>{
-              'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-              'status': 'done',
-              'body': body,
-              'title': title
-            },
-            "notification": <String, dynamic>{
-              "title": title,
-              "body": body,
-              "android_channel_id": "tk_duyet"
-            },
-            "to": token,
-          },
-        ),
-      );
-    } catch (e) {
-      if (kDebugMode) {
-        print('error push notification');
-      }
+    // QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+    //     .collection('tai_khoan')
+    //     .where('quyen_han', isEqualTo: 'GD')
+    //     .limit(1)
+    //     .get();
+    // fCMTokenGD = querySnapshot.docs.first['FCMtoken'];
+    // print(fCMToken);
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('quyen_han')
+        .where('ten_quyen_han', isEqualTo: 'Giám đốc')
+        .limit(1)
+        .get();
+    final docId = snapshot.docs.isNotEmpty ? snapshot.docs.first.id : null;
+    idGiamDoc = docId!;
+
+    QuerySnapshot querySnapshot1 = await FirebaseFirestore.instance
+        .collection('tai_khoan')
+        .where('quyen_han_id', isEqualTo: idGiamDoc)
+        .limit(1)
+        .get();
+    if (querySnapshot1.docs.isNotEmpty) {
+      fCMTokenGD = querySnapshot1.docs.first['FCMtoken'];
+      _emailGD = querySnapshot1.docs.first['email'];
     }
+
+    // thanh cong
   }
 
   @override
   void initState() {
     getFCMToken();
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     super.initState();
     print(widget.eventID);
+    // getListFromFirestore();
+    //getDataFromFirestore();
+
     final _reference =
         FirebaseFirestore.instance.collection('cong_viec').doc(widget.eventID);
     _futureData = _reference.get();
@@ -170,7 +251,7 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     _loadData();
     // _doi_trang_thai_cong_viec(_xet_trang_thai_ts);
     print(startOfToday.toString() + endOfToday.toString());
-    print(uid);
+
     getName();
     //nếu công việc đã duyệt + xảy ra rồi thì không xét công việc đó(tối ưu truy vấn)
     //xảy ra rồi => datetime.now <= giờ kết thúc => update trang_thai==false
@@ -180,9 +261,6 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   }
 
   getName() async {
-    final FirebaseAuth auth = FirebaseAuth.instance;
-    final User? user = auth.currentUser;
-    final uid = user?.uid;
     final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
     final ordersCollection = FirebaseFirestore.instance.collection('cong_viec');
 
@@ -193,23 +271,42 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     final userId = eventDoc['tai_khoan_id'];
     final userDoc = await usersCollection.doc(userId).get();
 
+    final _phong_ban_id = userDoc['phong_ban_id'];
+    final phongBanCollection1 =
+        FirebaseFirestore.instance.collection('phong_ban');
+    final phongBanDoc1 = await phongBanCollection1.doc(_phong_ban_id).get();
+    // final _ten = phongBanDoc1['ten_phong_ban'];
+    _tenPB = phongBanDoc1['ten_phong_ban'];
+    _emailPB = phongBanDoc1['email'];
+
     DateTime ngay_toi_thieuDate = eventDoc['ngay_toi_thieu'].toDate();
     _ngay_toi_thieu = DateFormat('dd/MM/yyyy').format(ngay_toi_thieuDate);
 
     DateTime ngay_postDate = eventDoc['ngay_post'].toDate();
     _ngay_post = DateFormat('dd/MM/yyyy').format(ngay_postDate);
-    _tenPB = userDoc['ten'];
-    _emailPB = userDoc['email'];
+    // _tenPB = userDoc['ten'];
+    // _emailPB = userDoc['email'];
 
-    final thuKiDoc = await usersCollection.doc(uid).get();
+    final thuKiDoc = await usersCollection.doc(UserID.localUID).get();
     final email_TK = thuKiDoc['email'];
     final app_Password = thuKiDoc['app_password'];
     final ten_TK = thuKiDoc['ten'];
     _email_TK = email_TK;
     _ten_tk = ten_TK;
     _app_password = app_Password;
+
+    // QuerySnapshot querySnapshot = await FirebaseFirestore.instance
+    //     .collection('tai_khoan')
+    //     .where('quyen_han', isEqualTo: 'GD')
+    //     .limit(1)
+    //     .get();
+    // _emailGD = querySnapshot.docs.first['email'];
     print(_email_TK);
-    setState(() {});
+
+    // final giamdocDoc = await usersCollection.doc(UserID.localUID).get();
+    // final email_GD = giamdocDoc['email'];
+    // _email_GD = email_GD;
+    //setState(() {});
     //print(tenPB);
   }
 
@@ -255,12 +352,38 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
       ..from = Address(tk_email.toString(), _ten_tk)
       ..recipients.add(_emailPB.toString())
       // ..ccRecipients.addAll(['recipient2@example.com', 'recipient3@example.com'])
-      // ..bccRecipients.add(Address('bccAddress@example.com'))
+      // ..bccRecipients.add(Address(_emailGD.toString()))
       ..subject = 'Gửi phòng ban ' + _tenPB + ' công việc đã duyệt thành công!'
       ..text = 'This is the plain text.\nThis is line 2 of the text part.'
       ..html =
           "<h1>Công việc đã được duyệt!</h1>\n<h2>-Tiêu đề:${_tieu_deController.text}</h2>\n<h2>-Tên(chi tiết):${_ten_cong_viecController.text}</h2>\n<h2>-Thời gian diễn ra: ${_thoi_gian_dien_raController.text} phút</h2>\n<h2>-Ngày diễn ra: ${_ngay_dien_ra}</h2>\n<h2>-Thời gian bắt đầu: ${_gio_bat_dauController.text}</h2>\n<h2>-Thời gian kết thúc : ${_thoi_gian_ket_thucController.text}</h2>\n<h2>-Ngày post : ${_ngay_post}\n<h2>-Ngày tối thiểu : ${_ngay_toi_thieu}</h2></h2>";
+    try {
+      final sendReport = await send(message, smtpServer);
+      print('Message sent: ' + sendReport.toString());
+    } on MailerException catch (e) {
+      print('Message not sent.');
+      for (var p in e.problems) {
+        print('Problem: ${p.code}: ${p.msg}');
+      }
+    }
+  }
 
+  void sendMailGD() async {
+    var tk_email = _email_TK;
+    final smtpServer = gmail(tk_email.toString(), _app_password);
+    final message = Message()
+      ..from = Address(tk_email.toString(), _ten_tk)
+      ..recipients.add(_emailGD.toString())
+      // ..ccRecipients.addAll(['recipient2@example.com', 'recipient3@example.com'])
+      // ..bccRecipients.add(Address(_emailGD.toString()))
+      ..subject = 'Gửi giám đốc ' +
+          _tenPB +
+          ' công việc mới của ' +
+          _tenPB +
+          ' đã được duyệt!'
+      ..text = 'This is the plain text.\nThis is line 2 of the text part.'
+      ..html =
+          "<h1>Công việc đã được duyệt!</h1>\n<h2>-Tiêu đề:${_tieu_deController.text}</h2>\n<h2>-Tên(chi tiết):${_ten_cong_viecController.text}</h2>\n<h2>-Thời gian diễn ra: ${_thoi_gian_dien_raController.text} phút</h2>\n<h2>-Ngày diễn ra: ${_ngay_dien_ra}</h2>\n<h2>-Thời gian bắt đầu: ${_gio_bat_dauController.text}</h2>\n<h2>-Thời gian kết thúc : ${_thoi_gian_ket_thucController.text}</h2>\n<h2>-Ngày post : ${_ngay_post}\n<h2>-Ngày tối thiểu : ${_ngay_toi_thieu}</h2></h2>";
     try {
       final sendReport = await send(message, smtpServer);
       print('Message sent: ' + sendReport.toString());
@@ -348,7 +471,115 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
     );
   }
 
+  // Future<void> getDataFromGoogleSheet() async {
+  //   Response data = await http.get(
+  //     Uri.parse(
+  //         "https://script.google.com/macros/s/AKfycbyrjyxRK3SEoyUXHrsp10F0YGOEVUlcv9YEdOWSuxvT6CXcOp9TBreYA62xpqoTmX-9nw/exec"),
+  //   );
+  //   if (data.statusCode == 200) {
+  //     dynamic jsonAppData = convert.jsonDecode(data.body);
+  //     //final List<Event> appointmentData = [];
+  //     for (dynamic data in jsonAppData) {
+  //       final collectionRef =
+  //           FirebaseFirestore.instance.collection('cong_viec_googleCalendar');
+  //       collectionRef.get().then((querySnapshot) async {
+  //         if (querySnapshot.docs.isEmpty) {
+  //           print('Collection does not exist');
+  //           await FirebaseFirestore.instance
+  //               .collection('cong_viec_googleCalendar')
+  //               .add({
+  //             "is_gd_them": false,
+  //             "ngay_gio_bat_dau": _convertToTimeStamp(data['starttime']),
+  //             "ngay_post": Timestamp.fromDate(DateTime.now()),
+  //             "ten_cong_viec": data['ten'],
+  //             "thoi_gian_cv": 0,
+  //             "tieu_de": data['subject'],
+  //             //thu ki duyet
+  //             "tk_duyet": false,
+  //             "trang_thai": true,
+  //             "do_uu_tien": "Vừa",
+  //             "tai_khoan_id": UserID.localUID,
+  //             // lỗi
+  //             "pb_huy": false,
+  //             "ngay_toi_thieu": Timestamp.fromDate(DateTime.now()),
+  //             "ngay_gio_ket_thuc": _convertToTimeStamp(data['endtime']),
+  //             "dia_diem": data['location'],
+  //             "file_pdf": '',
+  //             "phong_ban_id": idPhongBanTK
+  //           });
+  //           if (mounted) {
+  //             print('Đã thêm dữ liệu từ google calendar vào database');
+  //           }
+  //         } else {
+  //           print('Collection exists');
+  //           final eventCollection = FirebaseFirestore.instance
+  //               .collection('cong_viec_googleCalendar');
+  //           final eventDoc = await eventCollection
+  //               .where('dia_diem', isEqualTo: data['location'])
+  //               .where(
+  //                 'tieu_de',
+  //                 isEqualTo: data['subject'],
+  //               )
+  //               .where('ten_cong_viec', isEqualTo: data['ten'])
+  //               .get();
+  //           if (eventDoc.docs.isEmpty) {
+  //             //thêm cái đó
+  //             // Event eventData = Event
+  //             await FirebaseFirestore.instance
+  //                 .collection('cong_viec_googleCalendar')
+  //                 .add({
+  //               "is_gd_them": false,
+  //               "ngay_gio_bat_dau": _convertToTimeStamp(data['starttime']),
+  //               "ngay_post": Timestamp.fromDate(DateTime.now()),
+  //               "ten_cong_viec": data['ten'],
+  //               "thoi_gian_cv": 0,
+  //               "tieu_de": data['subject'],
+  //               //thu ki duyet
+  //               "tk_duyet": false,
+  //               "trang_thai": true,
+  //               "do_uu_tien": "Vừa",
+  //               "tai_khoan_id": UserID.localUID,
+  //               // lỗi
+  //               "pb_huy": false,
+  //               "ngay_toi_thieu": Timestamp.fromDate(DateTime.now()),
+  //               "ngay_gio_ket_thuc": _convertToTimeStamp(data['endtime']),
+  //               "dia_diem": data['location'],
+  //               "file_pdf": '',
+  //               "phong_ban_id": idPhongBanTK
+  //             });
+  //             if (mounted) {
+  //               print('Đã thêm dữ liệu từ google calendar vào database');
+  //             }
+  //           }
+  //         }
+  //       }).catchError((error) {
+  //         print('Error checking collection: $error');
+  //       });
+  //     }
+  //     // handle jsonAppData
+  //   } else {
+  //     // handle error
+  //     print('Khong phai json');
+  //   }
+  // }
+
+  void getEventFromGoogleSheet() async {}
+
+  Timestamp _convertToTimeStamp(String date) {
+    DateTime dateTime = DateTime.parse(date);
+
+// Chuyển đổi đối tượng DateTime thành UTC
+    DateTime dateTimeUtc = dateTime.toUtc();
+
+// Chuyển đổi đối tượng DateTime thành Timestamp
+    Timestamp timestamp = Timestamp.fromDate(dateTimeUtc);
+    return timestamp;
+  }
+
   _duyetEvent() async {
+    setState(() {
+      isLoading = true;
+    });
     if (_formKey.currentState!.validate()) {
       late Timestamp timestampKt;
       late Timestamp timestampBd;
@@ -359,13 +590,12 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
       DateTime _ngay_gio_ket_thuc = currentDate.add(durationtoaddKt);
       timestampKt = Timestamp.fromDate(_ngay_gio_ket_thuc);
       //timestamp bắt đầu
-
       Duration durationtoaddBd = Duration(
           hours: _gio_bat_dau_tod.hour, minutes: _gio_bat_dau_tod.minute);
       DateTime _ngay_gio_bat_dau = currentDate.add(durationtoaddBd);
       timestampBd = Timestamp.fromDate(_ngay_gio_bat_dau);
       var checkbool;
-      _events = [];
+      // _events = [];
       final snap = await FirebaseFirestore.instance
           .collection('cong_viec')
           .where('tk_duyet', isEqualTo: true)
@@ -377,7 +607,7 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
           .get();
       for (var doc in snap.docs) {
         final event = doc.data();
-        _events.add(event);
+        // _events.add(event);
         listGioBd = Timestamp.fromDate(event.ngay_gio_bat_dau);
         listGioKt = Timestamp.fromDate(event.ngay_gio_ket_thuc);
         //dương là lớn hơn âm là bé hơn
@@ -394,12 +624,83 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
           checkbool = false;
         }
       }
-//kiểm tra lại
+      if (_isChecked == true) {
+        setState(() {
+          isLoadingGoogleCalendar = true;
+        });
+        Response data = await http.get(
+          Uri.parse(
+              "https://script.google.com/macros/s/AKfycbyIfPgAyrMj-WugsVPacwogu1K-hWDFlhPWjxekdAukbk500yZM-nyslKYSdHd-dFZLCA/exec"),
+        );
+        if (data.statusCode == 200) {
+          dynamic jsonAppData = convert.jsonDecode(data.body);
+          //final List<Event> appointmentData = [];
+          for (dynamic data in jsonAppData) {
+            final ten = data['subject'];
+            print(ten);
+            timestampBDGoolgeSheet = _convertToTimeStamp(data['starttime']);
+            timestampKTGoolgeSheet = _convertToTimeStamp(data['endtime']);
+
+            // so sánh thời gian trong googlecalendar với thời gian của công việc vừa thêm vào
+            int ssbatDauvsKt = timestampBDGoolgeSheet.compareTo(timestampKt);
+            int ssketThucvsBd = timestampKTGoolgeSheet.compareTo(timestampBd);
+            if (ssbatDauvsKt >= 0 || ssketThucvsBd <= 0) {
+              print('kiểm tra gg calendar ok');
+            } else {
+              checkbool = false;
+            }
+            // querySnapshot4 = await FirebaseFirestore.instance
+            //     .collection('cong_viec')
+            //     .where('trang_thai', isEqualTo: true)
+            //     .where('tk_duyet', isEqualTo: true)
+            //     .where('ngay_gio_bat_dau',
+            //         isGreaterThan: timestampBDGoolgeSheet)
+            //     .where('ngay_gio_bat_dau',
+            //         isLessThan: timestampKTGoolgeSheet) //
+            //     .get();
+            // querySnapshot5 = await FirebaseFirestore.instance
+            //     .collection('cong_viec')
+            //     .where('trang_thai', isEqualTo: true)
+            //     .where('tk_duyet', isEqualTo: true)
+            //     .where('ngay_gio_ket_thuc', isLessThan: timestampKTGoolgeSheet)
+            //     .where('ngay_gio_ket_thuc',
+            //         isGreaterThan: timestampBDGoolgeSheet)
+            //     .get();
+            // // QuerySnapshot querySnapshot2 = await FirebaseFirestore.instance
+            // //     .collection('cong_viec')
+            // //     .where('trang_thai', isEqualTo: true)
+            // //     .where('tk_duyet', isEqualTo: true)
+            // //     .where('ngay_gio_bat_dau', isLessThanOrEqualTo: timestamp_BD)
+            // //     .where('ngay_gio_ket_thuc', isGreaterThanOrEqualTo: timestamp_KT)
+            // //     .get();
+            // querySnapshot6 = await FirebaseFirestore.instance
+            //     .collection('cong_viec')
+            //     .where('trang_thai', isEqualTo: true)
+            //     .where('tk_duyet', isEqualTo: true)
+            //     .where('ngay_gio_bat_dau', isEqualTo: timestampBDGoolgeSheet)
+            //     .get();
+            // int bd1 = timestampBd.compareTo(timestampBDGoolgeSheet);
+            // int bd2 = timestampBd.compareTo(timestampKTGoolgeSheet);
+            // int kt1 = timestampKt.compareTo(timestampBDGoolgeSheet);
+            // int kt2 = timestampKt.compareTo(timestampKTGoolgeSheet);
+            // //nằm trong khoảng
+            // if (bd1 > 0 && bd2 < 0) {
+            //   checkbool = false;
+            // }
+            // //công việc thêm vào nuốt công việc trong list
+            // else if (bd1 < 0 && kt1 > 0) {
+            //   checkbool = false;
+            // }
+          }
+        }
+        setState(() {
+          isLoadingGoogleCalendar = true;
+        });
+      }
       try {
         print('validate ok');
-        print(timestampBd.toDate().toString());
-        print(timestampKt.toDate().toString());
-
+        // print(timestampBd.toDate().toString());
+        // print(timestampKt.toDate().toString());
         // Query query1 = FirebaseFirestore.instance
         //     .collection('cong_viec')
         //     .where('trang_thai', isEqualTo: true)
@@ -596,30 +897,128 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
             .where('ngay_gio_bat_dau', isEqualTo: timestampBd)
             .get();
 
-        if (querySnapshot.docs.isEmpty == true &&
-            querySnapshot1.docs.isEmpty == true &&
-            querySnapshot3.docs.isEmpty == true &&
-            checkbool != false) {
-          await FirebaseFirestore.instance
-              .collection('cong_viec')
-              .doc(widget.eventID)
-              .update({
-            "tk_duyet": true,
-            "ngay_gio_ket_thuc": timestampKt,
-            "ngay_gio_bat_dau": timestampBd
-          });
-          print('thêm');
-          if (mounted) {
-            SendPushMessage(
-                fCMToken,
-                'Bắt đầu lúc' + _gio_bat_dauController.text,
-                'Công việc' + _ten_cong_viecController.text);
-            sendMail();
-            Navigator.pop<bool>(context, true);
-            //PhongBanHomePage();
+        if (_isChecked != true) {
+          if (querySnapshot.docs.isEmpty == true &&
+              querySnapshot1.docs.isEmpty == true &&
+              querySnapshot3.docs.isEmpty == true &&
+              checkbool != false) {
+            await FirebaseFirestore.instance
+                .collection('cong_viec')
+                .doc(widget.eventID)
+                .update({
+              "tk_duyet": true,
+              "ngay_gio_ket_thuc": timestampKt,
+              "ngay_gio_bat_dau": timestampBd
+            });
+            print('thêm');
+            if (mounted) {
+              //gửi phòng ban
+              // SendPushMessage(
+              //     fCMToken,
+              //     'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              //     _tieu_deController.text + ' đã được duyệt!!',
+              //     'tk_duyet');
+              getDataFromFirestoreAndSendPushNT();
+              SendPushMessage(
+                  fCMTokenGD,
+                  'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+                  _tieu_deController.text + ' đã được duyệt!!',
+                  'tk_duyet_gui_GD');
+              addThongBao(
+                  'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+                  _tieu_deController.text +
+                      ' đã được duyệt!!' +
+                      _tieu_deController.text +
+                      ' đã được duyệt!!',
+                  idGiamDoc,
+                  todaynow);
+              //gửi tất cả giám đốc
+              // for (int i = 0; i < FCMtoken_GD.length;) {
+              //   SendPushMessage(
+              //       FCMtoken_GD[i],
+              //       'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              //       _ten_cong_viecController.text + ' đã được duyệt!!',
+              //       'tk_duyet');
+              // }
+              if (!kIsWeb) {
+                sendMail();
+                sendMailGD();
+              }
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => DuyetEventList()),
+                (route) => false,
+              );
+              //   Navigator.pop<bool>(context, true);
+              // PhongBanHomePage();
+            }
+            print('thêm vào database');
+          } else {
+            _showmessage('Giờ bắt đầu trùng với lịch nội bộ');
+            setState(() {
+              isLoading = false;
+            });
           }
         } else {
-          _showmessage('Giờ bắt đầu trùng');
+          if (querySnapshot.docs.isEmpty == true &&
+              querySnapshot1.docs.isEmpty == true &&
+              querySnapshot3.docs.isEmpty == true &&
+              checkbool != false) {
+            await FirebaseFirestore.instance
+                .collection('cong_viec')
+                .doc(widget.eventID)
+                .update({
+              "tk_duyet": true,
+              "ngay_gio_ket_thuc": timestampKt,
+              "ngay_gio_bat_dau": timestampBd
+            });
+            print('thêm');
+            if (mounted) {
+              //gửi phòng ban
+              // SendPushMessage(
+              //     fCMToken,
+              //     'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              //     _tieu_deController.text + ' đã được duyệt!!',
+              //     'tk_duyet');
+              getDataFromFirestoreAndSendPushNT();
+              SendPushMessage(
+                  fCMTokenGD,
+                  'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+                  _tieu_deController.text + ' đã được duyệt!!',
+                  'tk_duyet_gui_GD');
+              addThongBao(
+                  'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+                  _tieu_deController.text + ' đã được duyệt!!',
+                  idGiamDoc,
+                  todaynow);
+              //gửi tất cả giám đốc
+              // for (int i = 0; i < FCMtoken_GD.length;) {
+              //   SendPushMessage(
+              //       FCMtoken_GD[i],
+              //       'Bắt đầu lúc: ' + _gio_bat_dauController.text,
+              //       _ten_cong_viecController.text + ' đã được duyệt!!',
+              //       'tk_duyet');
+              // }
+              if (!kIsWeb) {
+                sendMail();
+                sendMailGD();
+              }
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => DuyetEventList()),
+                (route) => false,
+              );
+              //   Navigator.pop<bool>(context, true);
+              //PhongBanHomePage();
+            }
+            print('thêm googlesheet');
+          } else {
+            _showmessage(
+                'Giờ bắt đầu trùng với lịch Google Calendar hoặc lịch nội bộ');
+            setState(() {
+              isLoading = false;
+            });
+          }
         }
       } catch (e) {
         print(e);
@@ -783,7 +1182,13 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
       //   print(e);
       // }
       // }
+      setState(() {
+        isLoading = false;
+      });
     }
+    setState(() {
+      isLoading = false;
+    });
   }
 
   // _duyetEvent() async {
@@ -810,362 +1215,403 @@ class _DuyetEventMainState extends State<DuyetEventMain> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.grey[100],
-          leading: IconButton(
-              onPressed: () {
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => ThuKiHomePage()),
-                  (route) => false,
-                );
-              },
-              icon: Icon(
-                Icons.clear,
-                color: Colors.red,
-              )),
-        ),
+        appBar: isLoading
+            ? AppBar(
+                backgroundColor: Colors.grey[100],
+              )
+            : AppBar(
+                title: Text('Duyệt công việc',
+                    style: TextStyle(color: Colors.black)),
+                backgroundColor: Colors.grey[100],
+                leading: IconButton(
+                    onPressed: () {
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => DuyetEventList()),
+                        (route) => false,
+                      );
+                    },
+                    icon: Icon(
+                      Icons.clear,
+                      color: Colors.red,
+                    )),
+              ),
         backgroundColor: Colors.grey[100],
-        body: ListView(padding: const EdgeInsets.all(16.0), children: [
-          Container(
-              margin: EdgeInsets.all(4),
-              color: Colors.grey[100],
-              // width: MediaQuery.of(context).size.width,
-              // height: MediaQuery.of(context).size.height * 0.5,
-              child: Center(
-                  child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Row(
-                    children: [
-                      Expanded(
-                          flex: 7,
-                          child: Container(
-                            child: Column(
-                              children: [
-                                TextFormField(
-                                  controller: _tieu_deController,
-                                  onTap: () async {
-                                    final result = await Navigator.push<bool>(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => DuyetEventList(),
-                                      ),
-                                    );
-                                    //if (result ?? false) {
-                                    //  //loadFirestoreEvents();
-                                    //}
-                                  },
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    labelText: 'Tiêu đề',
-                                    fillColor: Colors.white,
-                                    hintText: 'Tiêu đề',
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 8.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value!.length == 0) {
-                                      return "Tên công việc không được để trống";
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                  onSaved: (value) {
-                                    _tieu_deController.text = value!;
-                                  },
-                                ),
-                                SizedBox(height: 30),
-                                TextFormField(
-                                  controller: _ten_cong_viecController,
-                                  onTap: () async {
-                                    final result = await Navigator.push<bool>(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => DuyetEventList(),
-                                      ),
-                                    );
-                                    //if (result ?? false) {
-                                    //  //loadFirestoreEvents();
-                                    //}
-                                  },
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    labelText: 'Tên công việc',
-                                    fillColor: Colors.white,
-                                    hintText: 'Tên công việc',
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 8.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value!.length == 0) {
-                                      return "Tên công việc không được để trống";
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                  onSaved: (value) {
-                                    _ten_cong_viecController.text = value!;
-                                  },
-                                ),
-                                SizedBox(height: 30),
-                                TextFormField(
-                                  controller: _gio_bat_dauController,
-                                  onTap: () async {
-                                    TimeOfDay? newTime = await showTimePicker(
-                                        context: context,
-                                        initialTime: _gio_bat_dau_tod);
-                                    if (newTime == null) return;
-                                    setState(() {
-                                      _gio_bat_dau_tod = newTime;
-                                      _gio_bat_dauController.text =
-                                          '${_gio_bat_dau_tod.hour} giờ ${_gio_bat_dau_tod.minute} phút';
-                                      tinhThoiGianKetThuc(int.parse(
-                                          _thoi_gian_dien_raController.text));
-                                      _thoi_gian_ket_thucController.text =
-                                          _gio.toString() +
-                                              ' giờ' +
-                                              _phut.toString() +
-                                              ' phút';
-                                    });
-                                  },
-                                  validator: (value) {
-                                    if (value!.length == 0) {
-                                      return "Thời gian dự kiến không được để trống";
-                                    }
-                                    if (_gio_bat_dau_tod.hour == 11 &&
-                                            _gio_bat_dau_tod.minute == 0 ||
-                                        _gio_bat_dau_tod.hour == 17 &&
-                                            _gio_bat_dau_tod.minute == 0) {
-                                      return null;
-                                    }
-                                    if (_gio_bat_dau_tod.hour >= 7 &&
-                                            _gio_bat_dau_tod.hour < 11 ||
-                                        _gio_bat_dau_tod.hour >= 13 &&
-                                            _gio_bat_dau_tod.hour < 17) {
-                                      return null;
-                                    } else {
-                                      return "Thời gian bắt đầu ko hợp lệ";
-                                    }
-                                  },
-                                  style: TextStyle(fontSize: 15),
-                                  decoration: InputDecoration(
-                                    labelText: 'Thời gian dự kiến',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 8.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      //tính timestamp thời gian bắt đầu - kết thúc
-
-                                      _gio_bat_dauController.text = value;
-                                    });
-                                  },
-                                  //decoration: InputDecoration(),
-
-                                  onSaved: (value) {
-                                    _gio_bat_dauController.text = value!;
-                                  },
-                                ),
-                                //   ],
-                                // ),
-                                SizedBox(
-                                  height: 30,
-                                ),
-                                TextFormField(
-                                  controller: _thoi_gian_dien_raController,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    labelText: 'Thời gian dự kiến',
-                                    fillColor: Colors.white,
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 8.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value!.length == 0) {
-                                      return "Thời gian dự kiến không được để trống";
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                  onSaved: (value) {
-                                    _thoi_gian_dien_raController.text = value!;
-                                  },
-                                ),
-                                SizedBox(
-                                  height: 30,
-                                ),
-                                TextFormField(
-                                  controller: _thoi_gian_ket_thucController,
-                                  decoration: InputDecoration(
-                                    filled: true,
-                                    labelText: 'Thời gian dự kiến kết thúc',
-                                    fillColor: Colors.white,
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 8.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value!.length == 0) {
-                                      return "Thời gian dự kiến kết thúc không được để trống";
-                                    }
-                                    if (_gio == 11 && _phut == 0 ||
-                                        _gio == 17 && _phut == 0) {
-                                      return null;
-                                    }
-                                    if (_gio >= 7 && _gio < 11 ||
-                                        _gio >= 13 && _gio < 17) {
-                                      return null;
-                                    } else {
-                                      return "Thời gian kết thúc ko hợp lệ";
-                                    }
-                                  },
-                                  onSaved: (value) {
-                                    _thoi_gian_ket_thucController.text = value!;
-                                  },
-                                ),
-                                SizedBox(
-                                  height: 30,
-                                ),
-                                TextFormField(
-                                  decoration: InputDecoration(
-                                    labelText: 'Thời gian dự kiến bắt đầu',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    enabled: true,
-                                    contentPadding: const EdgeInsets.only(
-                                        left: 14.0, bottom: 8.0, top: 15.0),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          new BorderSide(color: Colors.white),
-                                      borderRadius:
-                                          new BorderRadius.circular(10),
-                                    ),
-                                  ),
-                                  onTap: _selectDatePicker,
-                                  controller: _ngay_toi_thieuController,
-                                  validator: (value) {
-                                    if (value!.isEmpty) {
-                                      return "Tên công việc không được để trống!";
-                                    }
-                                    if (value.length > 24) {
-                                      return ("Ngày không hợp lệ!");
-                                    }
-                                    //thời gian bắt đầu bé hơn datetime.now thì lỗi
-                                    if (DateTime.parse(value).isBefore(today)) {
-                                      return ("Không được chọn ngày trong quá khứ!");
-                                    } else {
-                                      return null;
-                                    }
-                                  },
-                                  onSaved: (value) {
-                                    _ngay_toi_thieuController.text = value!;
-                                  },
-                                ),
-                                MaterialButton(
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.all(
-                                          Radius.circular(20.0))),
-                                  elevation: 5.0,
-                                  height: 40,
-                                  onPressed: () {
-                                    _duyetEvent();
-                                  },
-                                  child: Text(
-                                    "Lưu",
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                    ),
-                                  ),
-                                  color: Colors.white,
-                                ),
-                              ],
+        body: isLoading
+            ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(),
+                    !isLoadingGoogleCalendar
+                        ? Text(
+                            "Đang xử lí!",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              fontSize: 20,
                             ),
-                          )),
-                      Expanded(
-                          flex: 3,
-                          child: Container(
-                              child: Column(children: [
-                            SizedBox(
-                              height: 5,
+                          )
+                        : Text(
+                            "Đang kết nối tới Google Calendar",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                              fontSize: 20,
                             ),
-                          ])))
-                    ],
-                  ),
+                          ),
+                  ],
                 ),
-              )))
-        ]));
+              )
+            : ListView(padding: const EdgeInsets.all(16.0), children: [
+                Container(
+                    margin: EdgeInsets.all(4),
+                    color: Colors.grey[100],
+                    // width: MediaQuery.of(context).size.width,
+                    // height: MediaQuery.of(context).size.height * 0.5,
+                    child: Center(
+                        child: SingleChildScrollView(
+                      child: Form(
+                        key: _formKey,
+                        child: Row(
+                          children: [
+                            Expanded(
+                                child: Container(
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    readOnly: true,
+                                    controller: _tieu_deController,
+                                    onTap: () async {
+                                      final result = await Navigator.push<bool>(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => DuyetEventList(),
+                                        ),
+                                      );
+                                      //if (result ?? false) {
+                                      //  //loadFirestoreEvents();
+                                      //}
+                                    },
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      labelText: 'Tiêu đề*',
+                                      fillColor: Colors.white,
+                                      hintText: 'Tiêu đề',
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 8.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value!.length == 0) {
+                                        return "Tên công việc không được để trống";
+                                      } else {
+                                        return null;
+                                      }
+                                    },
+                                    onSaved: (value) {
+                                      _tieu_deController.text = value!;
+                                    },
+                                  ),
+                                  SizedBox(height: 30),
+                                  TextFormField(
+                                    readOnly: true,
+                                    controller: _ten_cong_viecController,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      labelText: 'Tên công việc',
+                                      fillColor: Colors.white,
+                                      hintText: 'Tên công việc',
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 8.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value!.length == 0) {
+                                        return "Tên công việc không được để trống";
+                                      } else {
+                                        return null;
+                                      }
+                                    },
+                                    onSaved: (value) {
+                                      _ten_cong_viecController.text = value!;
+                                    },
+                                  ),
+                                  SizedBox(height: 30),
+                                  TextFormField(
+                                    readOnly: true,
+                                    controller: _gio_bat_dauController,
+                                    onTap: () async {
+                                      TimeOfDay? newTime = await showTimePicker(
+                                          context: context,
+                                          initialTime: _gio_bat_dau_tod);
+                                      if (newTime == null) return;
+                                      setState(() {
+                                        _gio_bat_dau_tod = newTime;
+                                        _gio_bat_dauController.text =
+                                            '${_gio_bat_dau_tod.hour} giờ ${_gio_bat_dau_tod.minute} phút';
+                                        tinhThoiGianKetThuc(int.parse(
+                                            _thoi_gian_dien_raController.text));
+                                        _thoi_gian_ket_thucController.text =
+                                            _gio.toString() +
+                                                ' giờ' +
+                                                _phut.toString() +
+                                                ' phút';
+                                      });
+                                    },
+                                    validator: (value) {
+                                      if (value!.length == 0) {
+                                        return "Thời gian dự kiến không được để trống";
+                                      }
+                                      if (_gio_bat_dau_tod.hour == 11 &&
+                                              _gio_bat_dau_tod.minute == 0 ||
+                                          _gio_bat_dau_tod.hour == 17 &&
+                                              _gio_bat_dau_tod.minute == 0) {
+                                        return null;
+                                      }
+                                      if (_gio_bat_dau_tod.hour >= 7 &&
+                                              _gio_bat_dau_tod.hour < 11 ||
+                                          _gio_bat_dau_tod.hour >= 13 &&
+                                              _gio_bat_dau_tod.hour < 17) {
+                                        return null;
+                                      } else {
+                                        return "Thời gian bắt đầu không hợp lệ";
+                                      }
+                                    },
+                                    style: TextStyle(fontSize: 15),
+                                    decoration: InputDecoration(
+                                      labelText: 'Thời gian bắt đầu*',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 8.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        //tính timestamp thời gian bắt đầu - kết thúc
+
+                                        _gio_bat_dauController.text = value;
+                                      });
+                                    },
+                                    //decoration: InputDecoration(),
+
+                                    onSaved: (value) {
+                                      _gio_bat_dauController.text = value!;
+                                    },
+                                  ),
+                                  //   ],
+                                  // ),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  TextFormField(
+                                    readOnly: true,
+                                    controller: _thoi_gian_dien_raController,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      labelText: 'Thời gian dự kiến',
+                                      fillColor: Colors.white,
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 8.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value!.length == 0) {
+                                        return "Thời gian dự kiến không được để trống";
+                                      } else {
+                                        return null;
+                                      }
+                                    },
+                                    onSaved: (value) {
+                                      _thoi_gian_dien_raController.text =
+                                          value!;
+                                    },
+                                  ),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  TextFormField(
+                                    readOnly: true,
+                                    controller: _thoi_gian_ket_thucController,
+                                    decoration: InputDecoration(
+                                      filled: true,
+                                      labelText: 'Thời gian dự kiến kết thúc',
+                                      fillColor: Colors.white,
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 8.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value!.length == 0) {
+                                        return "Hãy chọn thời gian bắt đầu";
+                                      }
+                                      if (_gio == 11 && _phut == 0 ||
+                                          _gio == 17 && _phut == 0) {
+                                        return null;
+                                      }
+                                      if (_gio >= 7 && _gio < 11 ||
+                                          _gio >= 13 && _gio < 17) {
+                                        return null;
+                                      } else {
+                                        return "Thời gian kết thúc không hợp lệ";
+                                      }
+                                    },
+                                    onSaved: (value) {
+                                      _thoi_gian_ket_thucController.text =
+                                          value!;
+                                    },
+                                  ),
+                                  SizedBox(
+                                    height: 30,
+                                  ),
+                                  TextFormField(
+                                    readOnly: true,
+                                    decoration: InputDecoration(
+                                      labelText: 'Thời gian dự kiến bắt đầu',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      enabled: true,
+                                      contentPadding: const EdgeInsets.only(
+                                          left: 14.0, bottom: 8.0, top: 15.0),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            new BorderSide(color: Colors.white),
+                                        borderRadius:
+                                            new BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                    controller: _ngay_toi_thieuController,
+                                    validator: (value) {
+                                      if (value!.isEmpty) {
+                                        return "Tên công việc không được để trống!";
+                                      }
+                                      if (value.length > 24) {
+                                        return ("Ngày không hợp lệ!");
+                                      }
+                                      //thời gian bắt đầu bé hơn datetime.now thì lỗi
+                                      if (DateTime.parse(value)
+                                          .isBefore(today)) {
+                                        return ("Không được chọn ngày trong quá khứ!");
+                                      } else {
+                                        return null;
+                                      }
+                                    },
+                                    onSaved: (value) {
+                                      _ngay_toi_thieuController.text = value!;
+                                    },
+                                  ),
+                                  Row(
+                                    children: [
+                                      Checkbox(
+                                        value: _isChecked,
+                                        onChanged: (bool? value) {
+                                          setState(() {
+                                            _isChecked = value ?? false;
+                                            print(_isChecked.toString());
+                                          });
+                                        },
+                                        activeColor: Colors.green,
+                                        checkColor: Colors.white,
+                                        tristate: false,
+                                      ),
+                                      Text(
+                                          'Kiểm tra với lịch Google Calendar?'),
+                                    ],
+                                  ),
+
+                                  MaterialButton(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.all(
+                                            Radius.circular(20.0))),
+                                    elevation: 5.0,
+                                    height: 40,
+                                    onPressed: () {
+                                      _duyetEvent();
+                                    },
+                                    child: Text(
+                                      "Lưu",
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                      ),
+                                    ),
+                                    color: Colors.white,
+                                  ),
+                                ],
+                              ),
+                            )),
+                          ],
+                        ),
+                      ),
+                    )))
+              ]));
   }
 }

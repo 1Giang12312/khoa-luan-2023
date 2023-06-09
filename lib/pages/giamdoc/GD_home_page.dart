@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../thuki/item_details_tk.dart';
-import 'item_details_giam_doc.dart';
 import '../../login.dart';
 import 'dart:collection';
 import 'package:table_calendar/table_calendar.dart';
@@ -96,59 +95,64 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // appBar: AppBar(
+      //   automaticallyImplyLeading: false,
+      //   title: Text("Giám đốc"),
+      //   // actions: [
+      //   //   IconButton(
+      //   //     onPressed: () {
+      //   //       logout(context);
+      //   //     },
+      //   //     icon: Icon(
+      //   //       Icons.logout,
+      //   //     ),
+      //   //   ),
+      //   //   IconButton(
+      //   //     onPressed: () async {
+      //   //       final result = await Navigator.push<bool>(
+      //   //         context,
+      //   //         MaterialPageRoute(
+      //   //           builder: (_) => ToDoList(),
+      //   //         ),
+      //   //       );
+      //   //     },
+      //   //     icon: Icon(
+      //   //       Icons.calendar_today_outlined,
+      //   //     ),
+      //   //   ),
+      //   //   IconButton(
+      //   //     onPressed: () async {
+      //   //       final result = await Navigator.push<bool>(
+      //   //         context,
+      //   //         MaterialPageRoute(
+      //   //           builder: (_) => ToDoListTuan(),
+      //   //         ),
+      //   //       );
+      //   //     },
+      //   //     icon: Icon(
+      //   //       Icons.calendar_view_week,
+      //   //     ),
+      //   //   ),
+      //   //   IconButton(
+      //   //     onPressed: () async {
+      //   //       final result = await Navigator.push<bool>(
+      //   //         context,
+      //   //         MaterialPageRoute(
+      //   //           builder: (_) => AccountInfor(userIDString: userID),
+      //   //         ),
+      //   //       );
+      //   //       _loadFirestoreEvents();
+      //   //     },
+      //   //     icon: Icon(
+      //   //       Icons.account_box,
+      //   //     ),
+      //   //   ),
+      //   // ],
+
+      // ),
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text("Giám đốc"),
-        actions: [
-          IconButton(
-            onPressed: () {
-              logout(context);
-            },
-            icon: Icon(
-              Icons.logout,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ToDoList(),
-                ),
-              );
-            },
-            icon: Icon(
-              Icons.calendar_today_outlined,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => ToDoListTuan(),
-                ),
-              );
-            },
-            icon: Icon(
-              Icons.calendar_view_week,
-            ),
-          ),
-          IconButton(
-            onPressed: () async {
-              final result = await Navigator.push<bool>(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AccountInfor(userIDString: userID),
-                ),
-              );
-              _loadFirestoreEvents();
-            },
-            icon: Icon(
-              Icons.account_box,
-            ),
-          ),
-        ],
+        backgroundColor: Colors.grey[100],
+        title: Text('Lịch trình', style: TextStyle(color: Colors.black)),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -200,14 +204,14 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
                     if (!isSameDay(_selectedDay, selectedDay)) {
                       setState(() {
                         _selectedDay = selectedDay;
-                        String dateString = DateFormat('yyyy-MM-dd HH:mm:ss')
-                            .format(selectedDay);
-                        String date = dateString.substring(0, 19);
-                        // static DateTime selectedDay1=  DateTime.parse(date);
-                        DateTime selectedDayFormatted = DateTime.parse(date);
-                        dataSelectedDay.selectedDay = selectedDayFormatted;
-                        //lưu selectedDay vào file khác
-                        print(dataSelectedDay.selectedDay.toString());
+                        // String dateString = DateFormat('yyyy-MM-dd HH:mm:ss')
+                        //     .format(selectedDay);
+                        // String date = dateString.substring(0, 19);
+                        // // static DateTime selectedDay1=  DateTime.parse(date);
+                        // DateTime selectedDayFormatted = DateTime.parse(date);
+                        // dataSelectedDay.selectedDay = selectedDayFormatted;
+                        // //lưu selectedDay vào file khác
+                        // print(dataSelectedDay.selectedDay.toString());
                         _focusedDay = focusedDay;
                       });
                     }
@@ -216,7 +220,13 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
                     headerTitleBuilder: (context, day) {
                       return Container(
                         padding: const EdgeInsets.all(8.0),
-                        child: Text(day.toString()),
+                        child: Text(
+                          day.toString().substring(0, 11),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -229,7 +239,7 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
                     final res = await Navigator.push<bool>(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => ItemDetailsThuKi(event.id),
+                        builder: (_) => ItemDetailsThuKi(event.id, false, true),
                       ),
                     );
                     if (res ?? false) {
@@ -240,30 +250,6 @@ class _GiamDocHomePageState extends State<GiamDocHomePage> {
                 ),
               ),
             ]),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          _loadFirestoreEvents();
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Future<void> logout(BuildContext context) async {
-    CircularProgressIndicator();
-    await FirebaseAuth.instance.signOut();
-    // await FirebaseFirestore.instance.terminate();
-    // await FirebaseFirestore.instance.clearPersistence();
-    // FirebaseFirestore.instance.settings=Settings(persistenceEnabled: false);
-    // writeAccountIntoLocalFile('', '');
-    // readFileAccount();
-
-    clearUserCredentials();
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => LoginPage(),
       ),
     );
   }

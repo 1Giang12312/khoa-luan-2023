@@ -1,16 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:khoa_luan1/dashboard.dart';
+import 'package:khoa_luan1/reset_password.dart';
 import 'package:rxdart/rxdart.dart';
 import 'pages/giamdoc/GD_home_page.dart';
 import 'pages/thuki/TK_home_page.dart';
 import 'pages/phongban/PB_home_page.dart';
 import 'register.dart';
 import 'data/FCMtoken.dart';
-import 'pages/giamdoc/dashboard_gd.dart';
 import 'pages/phongban/PB_home_page.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -43,8 +44,7 @@ class _LoginPageState extends State<LoginPage> {
   //     local_Notification_Service();
   bool _rememberMe = true;
   late SharedPreferences _prefs;
-  bool isThuKi = true;
-
+  late bool isLoading = false;
   @override
   void initState() {
     super.initState();
@@ -56,8 +56,10 @@ class _LoginPageState extends State<LoginPage> {
         print('login tu dong');
         LoginAutomatic();
       } else {
-        flutterLocalNotificationsPlugin.cancelAll();
-        print('đã tắt tất cả thông báo hẹn lịch');
+        if (!kIsWeb) {
+          flutterLocalNotificationsPlugin.cancelAll();
+          print('đã tắt tất cả thông báo hẹn lịch');
+        }
       }
     });
   }
@@ -118,6 +120,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> LoginAutomatic() async {
+    setState(() {
+      isLoading = true;
+    });
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? username = prefs.getString('username');
     String? password = prefs.getString('password');
@@ -125,15 +130,26 @@ class _LoginPageState extends State<LoginPage> {
       try {
         UserCredential userCredential =
             await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: username!,
-          password: password!,
+          email: username!.trim(),
+          password: password!.trim(),
         );
         final FirebaseAuth auth = FirebaseAuth.instance;
         final User? user = auth.currentUser;
         final uid = user?.uid;
-        saveUserCredentials(username, password);
-        route();
-        SaveorUpdateFCMToken(uid!);
+        final usersCollection =
+            FirebaseFirestore.instance.collection('tai_khoan');
+        final userDoc = await usersCollection.doc(uid).get();
+        final _trang_thai = userDoc['trang_thai'];
+        if (_trang_thai == true) {
+          saveUserCredentials(username, password);
+          route();
+          SaveorUpdateFCMToken(uid!);
+        } else {
+          showErrorMessage('Tài khoản bị khóa');
+          setState(() {
+            isLoading = false;
+          });
+        }
       } on FirebaseAuthException catch (e) {
         if (e.code == 'user-not-found') {
           showErrorMessage('Email không tồn tại');
@@ -141,6 +157,9 @@ class _LoginPageState extends State<LoginPage> {
           showErrorMessage('Sai mật khẩu');
         }
       }
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -154,66 +173,6 @@ class _LoginPageState extends State<LoginPage> {
       return false;
   }
 
-  // void listenNotifications() {
-  //   onNotification.stream.listen(onClickedNotification);
-  // }
-  // void onClickedNotification(String? payload) {
-  //   if (account.tai_khoan == '' || account.mat_khau == '') //nếu chưa đăng nhập
-  //   {
-  //     Navigator.of(context)
-  //         .push(MaterialPageRoute(builder: (context) => LoginPage()));
-  //     return;
-  //   } else {
-  //     signIn(account.tai_khoan, account.mat_khau);
-  //   }
-  //   // Navigator.push(context, MaterialPageRoute(builder: (BuildContext context) {
-  //   //   return AccountInfor(
-  //   //     userIDString: '7u9eGNSVYDejmxky9Qon9WOm2xC2',
-  //   //   );
-  //   // }));
-  // }
-  // // Future<String> checkRoute() async {
-  //   final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
-  //   final orderDoc = await usersCollection.doc().get();
-  //   if (orderDoc['quyen_han'] == 'GD') {
-  //     return 'GD';
-  //   } else if (orderDoc['quyen_han'] == 'PB') {
-  //     return 'PB';
-  //   } else
-  //     return 'TK';
-  // }
-  // void listenNotification() {
-  //   NotificationApi.onNotification.stream.listen(onClickedNotification);
-  // }
-  // void onClickedNotification(String? payload) {
-  //   if (account.tai_khoan == '' || account.mat_khau == '') {
-  //     print('chưa đăng nhập');
-  //   } else {
-  //     if (checkRoute() == 'GD') {
-  //       Navigator.of(context)
-  //           .push(MaterialPageRoute(builder: (context) => dashBoard_GD()));
-  //     } else if (checkRoute() == 'PB') {
-  //       Navigator.of(context)
-  //           .push(MaterialPageRoute(builder: (context) => PhongBanHomePage()));
-  //     }
-  //   }
-  // }
-  // Future<void> autoLoginByFCMToken(String FCMToken) async {
-  //   var _getFCMToken = FirebaseFirestore.instance
-  //       .collection('tai_khoan')
-  //       .where('FCMtoken', isEqualTo: FCMToken);
-  //   if (_getFCMToken == null) {
-  //     //hiện trang đăng nhập
-  //     return;
-  //   } else {
-  //      QuerySnapshot querySnapshot = await FirebaseFirestore.instance
-  //       .collection('tai_khoan')
-  //       .where('FCMtoken', isEqualTo: FCMToken)
-  //       .limit(1)
-  //       .get();
-  //     String taiKhoan = querySnapshot.docs.first['email'];
-  //   }
-  // }
   Future<void> saveUserCredentials(String username, String password) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     await prefs.setString('username', username);
@@ -221,12 +180,14 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void getToken() async {
-    await FirebaseMessaging.instance.getToken().then((value) {
-      setState(() {
-        FCMtoken = value;
-        print('token is ' + FCMtoken!);
+    if (!kIsWeb) {
+      await FirebaseMessaging.instance.getToken().then((value) {
+        setState(() {
+          FCMtoken = value;
+          print('token is ' + FCMtoken!);
+        });
       });
-    });
+    }
   }
 
   void requestPermission() async {
@@ -351,280 +312,389 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: SingleChildScrollView(
-        child: Column(
-          children: <Widget>[
-            SingleChildScrollView(
-              // color: Colors.grey[100],
-              // width: MediaQuery.of(context).size.width,
-              // height: MediaQuery.of(context).size.height * 0.70,
-              child: Center(
-                child: Container(
-                  margin: EdgeInsets.all(12),
-                  child: Form(
-                    key: _formkey,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          height: 30,
-                        ),
-                        Text(
-                          "Đăng nhập",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                            fontSize: 40,
-                          ),
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        TextFormField(
-                          controller: emailController,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.white,
-                            hintText: 'Email',
-                            enabled: true,
-                            contentPadding: const EdgeInsets.only(
-                                left: 14.0, bottom: 8.0, top: 8.0),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: new BorderSide(color: Colors.white),
-                              borderRadius: new BorderRadius.circular(10),
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: new BorderSide(color: Colors.white),
-                              borderRadius: new BorderRadius.circular(10),
-                            ),
-                          ),
-                          validator: (value) {
-                            if (value!.length == 0) {
-                              return "Email không được để trống";
-                            }
-                            // if (!RegExp("^[a-zA-Z0-9+_.-]+@agu.edu.vn")
-                            //     .hasMatch(value)) {
-                            //   return ("Hãy nhập mail agu");
-                            // }
-                            else {
-                              return null;
-                            }
-                          },
-                          onSaved: (value) {
-                            emailController.text = value!;
-                          },
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        TextFormField(
-                          controller: passwordController,
-                          obscureText: _isObscure3,
-                          decoration: InputDecoration(
-                            suffixIcon: IconButton(
-                                icon: Icon(_isObscure3
-                                    ? Icons.visibility
-                                    : Icons.visibility_off),
-                                onPressed: () {
-                                  setState(() {
-                                    _isObscure3 = !_isObscure3;
-                                  });
-                                }),
-                            filled: true,
-                            fillColor: Colors.white,
-                            hintText: 'Mật khẩu',
-                            enabled: true,
-                            contentPadding: const EdgeInsets.only(
-                                left: 14.0, bottom: 8.0, top: 15.0),
-                            focusedBorder: OutlineInputBorder(
-                              borderSide: new BorderSide(color: Colors.white),
-                              borderRadius: new BorderRadius.circular(10),
-                            ),
-                            enabledBorder: UnderlineInputBorder(
-                              borderSide: new BorderSide(color: Colors.white),
-                              borderRadius: new BorderRadius.circular(10),
-                            ),
-                          ),
-                          validator: (value) {
-                            RegExp regex = new RegExp(r'^.{6,}$');
-                            if (value!.isEmpty) {
-                              return "Mật khẩu không được để trống!";
-                            }
-                            if (!regex.hasMatch(value)) {
-                              return ("Mật khẩu phải dài hơn 6 kí tự!");
-                            } else {
-                              return null;
-                            }
-                          },
-                          onSaved: (value) {
-                            passwordController.text = value!;
-                          },
-                          keyboardType: TextInputType.emailAddress,
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        MaterialButton(
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(20.0))),
-                          elevation: 5.0,
-                          height: 40,
-                          onPressed: () {
-                            showScheduledNotification(
-                                id: 0,
-                                title: 'testtest',
-                                body: 'test',
-                                payload: 'thong bao',
-                                scheduledDate:
-                                    DateTime.now().add(Duration(seconds: 5)));
-
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: const Text('Sửa công việc thành công'),
-                              action: SnackBarAction(
-                                label: 'Hủy',
-                                onPressed: () {},
-                              ),
-                            ));
-                          },
-                          child: Text(
-                            "Thông tin cá nhân",
-                            style: TextStyle(
-                              fontSize: 20,
-                            ),
-                          ),
-                          color: Colors.white,
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        MaterialButton(
-                          shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(20.0))),
-                          elevation: 5.0,
-                          height: 40,
-                          onPressed: () {
-                            setState(() {
-                              visible = true;
-                            });
-                            signIn(
-                                emailController.text, passwordController.text);
-                          },
-                          child: Text(
-                            "Đăng nhập",
-                            style: TextStyle(
-                              fontSize: 20,
-                            ),
-                          ),
-                          color: Colors.white,
-                        ),
-                        SizedBox(
-                          height: 15,
-                        ),
-                        MaterialButton(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.all(
-                              Radius.circular(20.0),
-                            ),
-                          ),
-                          elevation: 5.0,
-                          height: 40,
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Register(),
-                              ),
-                            );
-                          },
-                          color: Colors.blue[900],
-                          child: Text(
-                            "Đăng kí",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                            ),
-                          ),
-                        ),
-
-                        // Visibility(
-                        //     maintainSize: true,
-                        //     maintainAnimation: true,
-                        //     maintainState: true,
-                        //     visible: visible,
-                        //     child: Container(
-                        //         child: CircularProgressIndicator(
-                        //       color: Colors.white,
-                        //     ))),
-                      ],
+      body: isLoading
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(),
+                  Text(
+                    "Đang đăng nhập!",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                      fontSize: 20,
                     ),
                   ),
-                ),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              child: Column(
+                children: <Widget>[
+                  SingleChildScrollView(
+                    // color: Colors.grey[100],
+                    // width: MediaQuery.of(context).size.width,
+                    // height: MediaQuery.of(context).size.height * 0.70,
+                    child: Center(
+                      child: Container(
+                        margin: EdgeInsets.all(12),
+                        child: Form(
+                          key: _formkey,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                height: 30,
+                              ),
+                              Text(
+                                "Đăng nhập",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                  fontSize: 40,
+                                ),
+                              ),
+                              SizedBox(
+                                height: 20,
+                              ),
+                              TextFormField(
+                                controller: emailController,
+                                decoration: InputDecoration(
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  hintText: 'Email',
+                                  enabled: true,
+                                  contentPadding: const EdgeInsets.only(
+                                      left: 14.0, bottom: 8.0, top: 8.0),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide:
+                                        new BorderSide(color: Colors.white),
+                                    borderRadius: new BorderRadius.circular(10),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide:
+                                        new BorderSide(color: Colors.white),
+                                    borderRadius: new BorderRadius.circular(10),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  if (value!.length == 0) {
+                                    return "Email không được để trống";
+                                  }
+                                  // if (!RegExp("^[a-zA-Z0-9+_.-]+@agu.edu.vn")
+                                  //     .hasMatch(value)) {
+                                  //   return ("Hãy nhập mail agu");
+                                  // }
+                                  else {
+                                    return null;
+                                  }
+                                },
+                                onSaved: (value) {
+                                  emailController.text = value!;
+                                },
+                                keyboardType: TextInputType.emailAddress,
+                              ),
+                              SizedBox(
+                                height: 20,
+                              ),
+                              TextFormField(
+                                controller: passwordController,
+                                obscureText: _isObscure3,
+                                decoration: InputDecoration(
+                                  suffixIcon: IconButton(
+                                      icon: Icon(_isObscure3
+                                          ? Icons.visibility
+                                          : Icons.visibility_off),
+                                      onPressed: () {
+                                        setState(() {
+                                          _isObscure3 = !_isObscure3;
+                                        });
+                                      }),
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  hintText: 'Mật khẩu',
+                                  enabled: true,
+                                  contentPadding: const EdgeInsets.only(
+                                      left: 14.0, bottom: 8.0, top: 15.0),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderSide:
+                                        new BorderSide(color: Colors.white),
+                                    borderRadius: new BorderRadius.circular(10),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide:
+                                        new BorderSide(color: Colors.white),
+                                    borderRadius: new BorderRadius.circular(10),
+                                  ),
+                                ),
+                                validator: (value) {
+                                  RegExp regex = new RegExp(r'^.{6,}$');
+                                  if (value!.isEmpty) {
+                                    return "Mật khẩu không được để trống!";
+                                  }
+                                  if (!regex.hasMatch(value)) {
+                                    return ("Mật khẩu phải dài hơn 6 kí tự!");
+                                  } else {
+                                    return null;
+                                  }
+                                },
+                                onSaved: (value) {
+                                  passwordController.text = value!;
+                                },
+                              ),
+                              SizedBox(
+                                height: 20,
+                              ),
+                              // MaterialButton(
+                              //   shape: RoundedRectangleBorder(
+                              //       borderRadius:
+                              //           BorderRadius.all(Radius.circular(20.0))),
+                              //   elevation: 5.0,
+                              //   height: 40,
+                              //   onPressed: () {
+                              //     showScheduledNotification(
+                              //         id: 0,
+                              //         title: 'testtest',
+                              //         body: 'test',
+                              //         payload: 'thong bao',
+                              //         scheduledDate:
+                              //             DateTime.now().add(Duration(seconds: 5)));
+                              //     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              //       content: const Text('Sửa công việc thành công'),
+                              //       action: SnackBarAction(
+                              //         label: 'Hủy',
+                              //         onPressed: () {},
+                              //       ),
+                              //     ));
+                              //   },
+                              //   child: Text(
+                              //     "Thông tin cá nhân",
+                              //     style: TextStyle(
+                              //       fontSize: 20,
+                              //     ),
+                              //   ),
+                              //   color: Colors.white,
+                              // ),
+                              //
+                              MaterialButton(
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.all(
+                                        Radius.circular(20.0))),
+                                elevation: 5.0,
+                                height: 40,
+                                onPressed: () {
+                                  signIn(emailController.text,
+                                      passwordController.text);
+                                },
+                                child: Text(
+                                  "Đăng nhập",
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                  ),
+                                ),
+                                color: Colors.white,
+                              ),
+                              SizedBox(
+                                height: 15,
+                              ),
+                              MaterialButton(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.all(
+                                    Radius.circular(20.0),
+                                  ),
+                                ),
+                                elevation: 5.0,
+                                height: 40,
+                                onPressed: () async {
+                                  final res = await Navigator.push<bool>(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ResetPassword(),
+                                    ),
+                                  );
+                                },
+                                color: Colors.blue[900],
+                                child: Text(
+                                  "Quên mật khẩu",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 20,
+                                  ),
+                                ),
+                              ),
+                              // Visibility(
+                              //     maintainSize: true,
+                              //     maintainAnimation: true,
+                              //     maintainState: true,
+                              //     visible: visible,
+                              //     child: Container(
+                              //         child: CircularProgressIndicator(
+                              //       color: Colors.white,
+                              //     ))),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 
-  void route() {
+  void route() async {
     User? user = FirebaseAuth.instance.currentUser; //gán uid cho file local
     final uid = user?.uid;
     UserID.localUID = uid!;
+    final quyenhanCollection =
+        FirebaseFirestore.instance.collection('quyen_han');
+    final taikhoanCollection =
+        FirebaseFirestore.instance.collection('tai_khoan');
+
+    final userID = UserID.localUID;
+
+    final userDoc = await taikhoanCollection.doc(userID).get();
+    final quyenHanID = userDoc['quyen_han_id'];
+    final quyenHanDoc = await quyenhanCollection.doc(quyenHanID).get();
+    final ten_quyen_han = quyenHanDoc['ten_quyen_han'];
     //lấy dữ liệu số lượng công việc mỗi ngày theo uid
-    var kk = FirebaseFirestore.instance
-        .collection('tai_khoan')
-        .doc(user!.uid)
-        .get()
-        .then((DocumentSnapshot documentSnapshot) {
-      if (documentSnapshot.exists) {
-        if (documentSnapshot.get('quyen_han') == "TK") {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashBoard('TK'),
-            ),
-          );
-        }
-        if (documentSnapshot.get('quyen_han') == "GD") {
-          init();
-          showScheduledNotification(
-              id: 0,
-              title: 'Công việc hôm nay',
-              body: 'Xem danh sách công việc hôm nay',
-              payload: 'thong bao',
-              scheduledDate: DateTime.now().add(Duration(seconds: 5)));
-          print('đã bật hẹn lịch');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashBoard('GD'),
-            ),
-          );
-        } else if (documentSnapshot.get('quyen_han') == "PB") {
-          init();
-          showScheduledNotification(
-              id: 0,
-              title: 'Công việc hôm nay',
-              body: 'Xem danh sách công việc hôm nay',
-              payload: 'thong bao',
-              scheduledDate: DateTime.now().add(Duration(seconds: 5)));
-          print('đã bật hẹn lịch');
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => DashBoard('PB'),
-            ),
-          );
-        }
-      } else {
-        print('loi');
+    if (ten_quyen_han == 'Thư ký') {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashBoard('TK'),
+        ),
+      );
+    } else if (ten_quyen_han == "Giám đốc") {
+      if (!kIsWeb) {
+        init();
+        showScheduledNotification(
+            id: 0,
+            title: 'Công việc hôm nay',
+            body: 'Xem danh sách công việc hôm nay',
+            payload: 'thong bao',
+            scheduledDate: DateTime.now().add(Duration(seconds: 5)));
       }
-    });
+      print('đã bật hẹn lịch');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashBoard('GD'),
+        ),
+      );
+    } else if (ten_quyen_han == "Trưởng phòng ban") {
+      if (!kIsWeb) {
+        init();
+        showScheduledNotification(
+            id: 0,
+            title: 'Công việc hôm nay',
+            body: 'Xem danh sách công việc hôm nay',
+            payload: 'thong bao',
+            scheduledDate: DateTime.now().add(Duration(seconds: 5)));
+      }
+      print('đã bật hẹn lịch');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashBoard('PB'),
+        ),
+      );
+    } else if (ten_quyen_han == "Phó phòng ban") {
+      if (!kIsWeb) {
+        init();
+        showScheduledNotification(
+            id: 0,
+            title: 'Công việc hôm nay',
+            body: 'Xem danh sách công việc hôm nay',
+            payload: 'thong bao',
+            scheduledDate: DateTime.now().add(Duration(seconds: 5)));
+      }
+      print('đã bật hẹn lịch');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashBoard('PB'),
+        ),
+      );
+    } else if (ten_quyen_han == "Thành viên phòng ban") {
+      if (!kIsWeb) {
+        init();
+        showScheduledNotification(
+            id: 0,
+            title: 'Công việc hôm nay',
+            body: 'Xem danh sách công việc hôm nay',
+            payload: 'thong bao',
+            scheduledDate: DateTime.now().add(Duration(seconds: 5)));
+      }
+      print('đã bật hẹn lịch');
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => DashBoard('TVPB'),
+        ),
+      );
+    } else {
+      print('loi');
+    }
+    print(ten_quyen_han);
+    // var kk = FirebaseFirestore.instance
+    //     .collection('tai_khoan')
+    //     .doc(user!.uid)
+    //     .get()
+    //     .then((DocumentSnapshot documentSnapshot) {
+    //   if (documentSnapshot.exists) {
+    //     if (documentSnapshot.get('quyen_han') == "TK") {
+    //       Navigator.pushReplacement(
+    //         context,
+    //         MaterialPageRoute(
+    //           builder: (context) => DashBoard('TK'),
+    //         ),
+    //       );
+    //     }
+    //     if (documentSnapshot.get('quyen_han') == "GD") {
+    //       if (!kIsWeb) {
+    //         init();
+    //         showScheduledNotification(
+    //             id: 0,
+    //             title: 'Công việc hôm nay',
+    //             body: 'Xem danh sách công việc hôm nay',
+    //             payload: 'thong bao',
+    //             scheduledDate: DateTime.now().add(Duration(seconds: 5)));
+    //       }
+    //       print('đã bật hẹn lịch');
+    //       Navigator.pushReplacement(
+    //         context,
+    //         MaterialPageRoute(
+    //           builder: (context) => DashBoard('GD'),
+    //         ),
+    //       );
+    //     } else if (documentSnapshot.get('quyen_han') == "PB") {
+    //       if (!kIsWeb) {
+    //         init();
+    //         showScheduledNotification(
+    //             id: 0,
+    //             title: 'Công việc hôm nay',
+    //             body: 'Xem danh sách công việc hôm nay',
+    //             payload: 'thong bao',
+    //             scheduledDate: DateTime.now().add(Duration(seconds: 5)));
+    //       }
+
+    //       print('đã bật hẹn lịch');
+    //       Navigator.pushReplacement(
+    //         context,
+    //         MaterialPageRoute(
+    //           builder: (context) => DashBoard('PB'),
+    //         ),
+    //       );
+    //     }
+    //   } else {
+    //     print('loi');
+    //   }
+    //});
   }
 
   void showErrorMessage(String message) {
@@ -645,27 +715,46 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void SaveorUpdateFCMToken(String uid) async {
+    setState(() {
+      isLoading = true;
+    });
     await FirebaseFirestore.instance.collection('tai_khoan').doc(uid).update({
       'FCMtoken': FCMtoken,
     });
     FCMtokenData.token = FCMtoken!;
+    setState(() {
+      isLoading = false;
+    });
   }
 
   void signIn(String email, String password) async {
+    setState(() {
+      isLoading = true;
+    });
     if (_formkey.currentState!.validate()) {
       try {
         UserCredential userCredential =
             await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email,
-          password: password,
+          email: email.trim(),
+          password: password.trim(),
         );
         final FirebaseAuth auth = FirebaseAuth.instance;
         final User? user = auth.currentUser;
         final uid = user?.uid;
-
-        saveUserCredentials(email, password);
-        route();
-        SaveorUpdateFCMToken(uid!);
+        final usersCollection =
+            FirebaseFirestore.instance.collection('tai_khoan');
+        final userDoc = await usersCollection.doc(uid).get();
+        final _trang_thai = userDoc['trang_thai'];
+        if (_trang_thai == true) {
+          saveUserCredentials(email, password);
+          route();
+          SaveorUpdateFCMToken(uid!);
+        } else {
+          showErrorMessage('Tài khoản bị khóa');
+          setState(() {
+            isLoading = false;
+          });
+        }
         //bật tự động thông báo
         //không bật lịch cho thư kí
       } on FirebaseAuthException catch (e) {
@@ -678,5 +767,8 @@ class _LoginPageState extends State<LoginPage> {
         }
       }
     }
+    setState(() {
+      isLoading = false;
+    });
   }
 }

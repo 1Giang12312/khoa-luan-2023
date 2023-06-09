@@ -13,6 +13,7 @@ class _ResetPasswordState extends State<ResetPassword> {
   final _emailController = TextEditingController();
   final auth = FirebaseAuth.instance;
   final _formkey = GlobalKey<FormState>();
+  late bool _isEmailExit = false;
   Future<bool> checkEmail() async {
     QuerySnapshot querySnapshot = await FirebaseFirestore.instance
         .collection('tai_khoan')
@@ -24,11 +25,63 @@ class _ResetPasswordState extends State<ResetPassword> {
       return true;
   }
 
+  Future<void> checkEmailExists(String email) async {
+    try {
+      List<String> signInMethods =
+          await FirebaseAuth.instance.fetchSignInMethodsForEmail(email);
+      if (signInMethods.contains('password')) {
+        print('Email $email đã tồn tại và có thể đăng nhập bằng mật khẩu.');
+        _isEmailExit = true;
+        auth.sendPasswordResetEmail(email: _emailController.text);
+        Navigator.of(context).pop();
+        final snackBar = SnackBar(
+          content: Text('Hãy kiểm tra email của bạn'),
+          action: SnackBarAction(
+            label: 'Tắt',
+            onPressed: () {},
+          ),
+        );
+        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+      } else {
+        print(
+            'Email $email đã tồn tại nhưng không thể đăng nhập bằng mật khẩu.');
+        _isEmailExit = false;
+      }
+    } on FirebaseAuthException catch (e) {
+      print('Lỗi: $e');
+    }
+    if (_isEmailExit == false) {
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            backgroundColor: Color.fromARGB(255, 255, 0, 0),
+            title: Center(
+              child: Text(
+                'Email chưa chính xác',
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         appBar: AppBar(
-          title: Text('Quên mật khẩu'),
+          title: Text('Quên mật khẩu', style: TextStyle(color: Colors.black)),
+          backgroundColor: Colors.grey[100],
+          leading: IconButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              icon: Icon(
+                Icons.clear,
+                color: Color.fromARGB(255, 0, 0, 0),
+              )),
         ),
         backgroundColor: Colors.grey[100],
         body: SingleChildScrollView(
@@ -82,39 +135,7 @@ class _ResetPasswordState extends State<ResetPassword> {
                   if (_formkey.currentState!.validate()) {
                     try {
                       //trước khi send phải kiểm tra email có trong database chưa
-                      if (checkEmail() == true) {
-                        auth.sendPasswordResetEmail(
-                            email: _emailController.text);
-                        Navigator.of(context).pop();
-                        final snackBar = SnackBar(
-                          content: Text('Hãy kiểm tra email của bạn'),
-                          action: SnackBarAction(
-                            label: 'Tắt',
-                            onPressed: () {
-                              // Some code to undo the change.
-                            },
-                          ),
-                        );
-
-                        // Find the ScaffoldMessenger in the widget tree
-                        // and use it to show a SnackBar.
-                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
-                      } else {
-                        showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              backgroundColor: Color.fromARGB(255, 255, 0, 0),
-                              title: Center(
-                                child: Text(
-                                  'Email chưa chính xác',
-                                  style: const TextStyle(color: Colors.white),
-                                ),
-                              ),
-                            );
-                          },
-                        );
-                      }
+                      checkEmailExists(_emailController.text);
                     } catch (e) {
                       print(e);
                     }

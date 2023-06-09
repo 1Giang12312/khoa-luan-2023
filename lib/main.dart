@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
 import 'package:khoa_luan1/pages/phongban/add_event.dart';
+import 'package:khoa_luan1/services/calendar_sheet_api.dart';
 import 'firebase_options.dart';
 import 'register.dart';
 import 'login.dart';
@@ -15,11 +16,11 @@ import 'pages/phongban/PB_home_page.dart';
 import 'pages/thuki/TK_home_page.dart';
 import 'pages/giamdoc/GD_home_page.dart';
 import 'pages/thuki/duyet_event_list.dart';
-import 'pages/giamdoc/dashboard_gd.dart';
 import 'data/FCMtoken.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:flutter_native_timezone/flutter_native_timezone.dart';
+import 'dart:io';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   print('background handler ${message.messageId}');
@@ -77,17 +78,21 @@ void _doi_trang_thai_cong_viec(Timestamp _datetime_now) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // await UserSheetAPI.init();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
   await FirebaseMessaging.instance.getInitialMessage();
-  //khởi tạo timezone
-  final String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
   // đổi trạng thái công việc
   _doi_trang_thai_cong_viec(_xet_trang_thai_ts);
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  tz.initializeTimeZones();
-  tz.setLocalLocation(tz.getLocation(timeZoneName));
+  if (!kIsWeb) {
+    //khởi tạo timezone
+    final String timeZoneName = await FlutterNativeTimezone.getLocalTimezone();
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation(timeZoneName));
+  }
+
   runApp(const MyApp());
 }
 

@@ -3,14 +3,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
+import 'package:khoa_luan1/dashboard.dart';
 import 'package:khoa_luan1/model/event.dart';
 import 'package:intl/intl.dart';
 
 import 'package:khoa_luan1/pages/thuki/duyet_event_main.dart';
 import '../../list_event.dart';
-import 'duyet_event_detail.dart';
 import '../../data/selectedDay.dart';
 import 'duyet_event_main.dart';
+import 'item_details_tk.dart';
 
 class DuyetEventList extends StatefulWidget {
   const DuyetEventList({super.key});
@@ -68,8 +69,13 @@ class _DuyetEventListState extends State<DuyetEventList> {
         title: Text('Lịch trình ', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.grey[100],
         leading: IconButton(
-            onPressed: () {
-              Navigator.pop(context);
+            onPressed: () async {
+              final res = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DashBoard('TK'),
+                ),
+              );
             },
             icon: Icon(
               Icons.clear,
@@ -128,6 +134,7 @@ class _DuyetEventListState extends State<DuyetEventList> {
                   );
                 }
                 return ListView.builder(
+                  physics: ClampingScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
@@ -168,8 +175,8 @@ class _DuyetEventListState extends State<DuyetEventList> {
                                       final res = await Navigator.push<bool>(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => DuyetEventDetail(
-                                              documentSnapshot.id),
+                                          builder: (_) => ItemDetailsThuKi(
+                                              documentSnapshot.id, false, true),
                                         ),
                                       );
                                       Navigator.of(context).maybePop();

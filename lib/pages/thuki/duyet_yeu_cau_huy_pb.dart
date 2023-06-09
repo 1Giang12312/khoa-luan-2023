@@ -8,10 +8,9 @@ import 'package:intl/intl.dart';
 
 import 'package:khoa_luan1/pages/thuki/duyet_event_main.dart';
 import '../../list_event.dart';
-import 'duyet_event_detail.dart';
 import '../../data/selectedDay.dart';
 import 'duyet_event_main.dart';
-import 'detail_duyet_yeu_cau_huy_pb.dart';
+import 'item_details_tk.dart';
 
 class DuyetYeuCauHuy extends StatefulWidget {
   const DuyetYeuCauHuy({super.key});
@@ -32,6 +31,7 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
     super.initState();
     _event = FirebaseFirestore.instance
         .collection('cong_viec')
+        .where('')
         .where('pb_huy', isEqualTo: true);
     _firstDay = DateTime.now().subtract(const Duration(days: 1000));
     _lastDay = DateTime.now().add(const Duration(days: 1000));
@@ -41,6 +41,7 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text('Danh sách yêu cầu hủy ',
             style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.grey[100],
@@ -58,6 +59,7 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                   );
                 }
                 return ListView.builder(
+                  physics: ClampingScrollPhysics(),
                   shrinkWrap: true,
                   itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
@@ -71,26 +73,15 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                       margin: const EdgeInsets.all(10),
                       child: ListTile(
                         onTap: () async {
+                          print(documentSnapshot.id);
                           final res = await Navigator.push<bool>(
                             context,
                             MaterialPageRoute(
-                              builder: (_) =>
-                                  DuyetYeuCauHuyDetail(documentSnapshot.id),
+                              builder: (_) => ItemDetailsThuKi(
+                                  documentSnapshot.id, true, false),
                             ),
                           );
-                          print(documentSnapshot.id);
-                          Navigator.of(context).maybePop();
-                          // final res = await Navigator.push<bool>(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //     builder: (_) => DuyetEventMain(
-                          //       eventID: documentSnapshot.id,
-                          //       firstDate: _firstDay,
-                          //       lastDate: _lastDay,
-                          //       selectedDate: dataSelectedDay.selectedDay,
-                          //     ),
-                          //   ),
-                          // );
+                          //Navigator.of(context).pop();
                         },
                         title: Text(documentSnapshot['tieu_de']),
                         subtitle: Text('Ngày tối thiểu: ' +
@@ -107,8 +98,8 @@ class _DuyetYeuCauHuyState extends State<DuyetYeuCauHuy> {
                                       final res = await Navigator.push<bool>(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (_) => DuyetYeuCauHuyDetail(
-                                              documentSnapshot.id),
+                                          builder: (_) => ItemDetailsThuKi(
+                                              documentSnapshot.id, true, false),
                                         ),
                                       );
                                       Navigator.of(context).maybePop();

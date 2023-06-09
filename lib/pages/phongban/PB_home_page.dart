@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:khoa_luan1/data/UserID.dart';
 import 'package:khoa_luan1/pages/phongban/item_details.dart';
+import 'package:khoa_luan1/pages/phongban/list_thong_bao.dart';
 import '../../login.dart';
 import 'dart:collection';
 import 'package:table_calendar/table_calendar.dart';
@@ -26,6 +27,7 @@ class PhongBanHomePage extends StatefulWidget {
 class _PhongBanHomePageState extends State<PhongBanHomePage> {
   late DateTime _firstDay;
   late DateTime _lastDay;
+
   DateTime? _selectedDay;
   DateTime _focusedDay = DateTime.now();
   CalendarFormat _calendarFormat = CalendarFormat.month;
@@ -35,6 +37,8 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
     return key.day * 1000000 + key.month * 10000 + key.year;
   }
 
+  var _soThongBao;
+  var _phong_ban_id = '';
   @override
   void initState() {
     super.initState();
@@ -46,10 +50,20 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
     _firstDay = DateTime.now().subtract(const Duration(days: 1000));
     _lastDay = DateTime.now().add(const Duration(days: 1000));
     _selectedDay = DateTime.now();
-    _loadFirestoreEvents();
+    // getPhongBanID();
+    // _loadFirestoreEvents();
+    getPhongBanID().then((_) => _loadFirestoreEvents());
+    //soLuongThongBaoChuaXem();
+  }
+
+  getPhongBanID() async {
+    final usersCollection = FirebaseFirestore.instance.collection('tai_khoan');
+    final userDoc = await usersCollection.doc(UserID.localUID).get();
+    _phong_ban_id = userDoc['phong_ban_id'];
   }
 
   _loadFirestoreEvents() async {
+    getPhongBanID();
     final firstDay = DateTime(
       _focusedDay.year,
       _focusedDay.month - 1,
@@ -59,7 +73,7 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
 
     final snap = await FirebaseFirestore.instance
         .collection('cong_viec')
-        .where('tai_khoan_id', isEqualTo: UserID.localUID)
+        // .where('phong_ban_id', isEqualTo: _phong_ban_id)
         .where('tk_duyet', isEqualTo: true) // tk duyet moi hien
         .where('ngay_gio_bat_dau', isGreaterThanOrEqualTo: firstDay)
         .where('ngay_gio_bat_dau', isLessThanOrEqualTo: lastDay)
@@ -67,14 +81,17 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
             fromFirestore: Event.fromFirestore,
             toFirestore: (event, options) => event.toFirestore())
         .get();
+
     for (var doc in snap.docs) {
-      final event = doc.data();
-      final day = DateTime.utc(event.ngay_gio_bat_dau.year,
-          event.ngay_gio_bat_dau.month, event.ngay_gio_bat_dau.day);
-      if (_events[day] == null) {
-        _events[day] = [];
+      if (doc['phong_ban_id'].toString().contains(_phong_ban_id)) {
+        final event = doc.data();
+        final day = DateTime.utc(event.ngay_gio_bat_dau.year,
+            event.ngay_gio_bat_dau.month, event.ngay_gio_bat_dau.day);
+        if (_events[day] == null) {
+          _events[day] = [];
+        }
+        _events[day]!.add(event);
       }
-      _events[day]!.add(event);
     }
     print(firstDay.toString() + lastDay.toString());
     setState(() {});
@@ -84,9 +101,66 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
     return _events[day] ?? [];
   }
 
+  // int soLuongThongBaoChuaXem() {
+  //   CollectionReference usersRef =
+  //       FirebaseFirestore.instance.collection('thong_bao');
+  //   usersRef
+  //       .where('trang_thai_xem', isEqualTo: false)
+  //       .where('tai_khoan_id', isEqualTo: UserID.localUID)
+  //       .get()
+  //       .then((querySnapshot) {
+  //     _soThongBao = querySnapshot.docs.length;
+  //   });
+  //   return _soThongBao;
+  // }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        //automaticallyImplyLeading: false,
+        backgroundColor: Colors.grey[100],
+        title: Text('Lịch trình', style: TextStyle(color: Colors.black)),
+        iconTheme: IconThemeData(color: Colors.black),
+      ),
+      drawer: Drawer(
+        width: 200,
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: <Widget>[
+            const SizedBox(
+              height: 100,
+              child: DrawerHeader(
+                decoration:
+                    BoxDecoration(color: Color.fromARGB(255, 245, 245, 245)),
+                child: Text(
+                  'Tuỳ chọn',
+                  style: TextStyle(
+                    color: Color.fromARGB(255, 0, 0, 0),
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+            ),
+            ListTile(
+              title: Text('Thông báo'),
+              onTap: () async {
+                // Do something
+                final res = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => ListThongBao(taiKhoanID: UserID.localUID),
+                  ),
+                );
+              },
+              // trailing: Text(
+              //   _soThongBao.toString(),
+              //   style: TextStyle(color: Colors.red),
+              // ),
+            ),
+          ],
+        ),
+      ),
       body: SingleChildScrollView(
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -145,7 +219,13 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
                     headerTitleBuilder: (context, day) {
                       return Container(
                         padding: const EdgeInsets.all(8.0),
-                        child: Text(day.toString()),
+                        child: Text(
+                          day.toString().substring(0, 11),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -164,39 +244,8 @@ class _PhongBanHomePageState extends State<PhongBanHomePage> {
                     if (res ?? false) {
                       _loadFirestoreEvents();
                     }
+                    _loadFirestoreEvents();
                   },
-                  // onDelete: () async {
-                  //   final delete = await showDialog<bool>(
-                  //     context: context,
-                  //     builder: (_) => AlertDialog(
-                  //       title: const Text("Delete Event?"),
-                  //       content: const Text("Are you sure you want to delete?"),
-                  //       actions: [
-                  //         TextButton(
-                  //           onPressed: () => Navigator.pop(context, false),
-                  //           style: TextButton.styleFrom(
-                  //             foregroundColor: Colors.black,
-                  //           ),
-                  //           child: const Text("No"),
-                  //         ),
-                  //         TextButton(
-                  //           onPressed: () => Navigator.pop(context, true),
-                  //           style: TextButton.styleFrom(
-                  //             foregroundColor: Colors.red,
-                  //           ),
-                  //           child: const Text("Yes"),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   );
-                  //   if (delete ?? false) {
-                  //     await FirebaseFirestore.instance
-                  //         .collection('events')
-                  //         .doc(event.id)
-                  //         .delete();
-                  //     _loadFirestoreEvents();
-                  //   }
-                  // }
                 ),
               ),
             ]),

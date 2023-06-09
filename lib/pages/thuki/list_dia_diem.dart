@@ -11,20 +11,29 @@ import '../../list_event.dart';
 import '../../data/selectedDay.dart';
 import 'duyet_event_main.dart';
 import 'item_details_tk.dart';
+import 'list_dia_diem_details.dart';
 import 'list_phong_ban_details.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../data/UserID.dart';
 
-class ListPhongBan extends StatefulWidget {
+class ListDiaDiem extends StatefulWidget {
   bool isRouteGD;
-  ListPhongBan({super.key, required this.isRouteGD});
+  bool isRoutePB;
+  bool isRouteTK;
+  bool isRouteTVPB;
+  ListDiaDiem(
+      {super.key,
+      required this.isRouteGD,
+      required this.isRoutePB,
+      required this.isRouteTK,
+      required this.isRouteTVPB});
 
   @override
-  State<ListPhongBan> createState() => _ListPhongBanState();
+  State<ListDiaDiem> createState() => _ListDiaDiemState();
 }
 
 // Timestamp.fromd
-class _ListPhongBanState extends State<ListPhongBan> {
+class _ListDiaDiemState extends State<ListDiaDiem> {
   // late Map<DateTime, List<Event>> _events;
 
   var _event;
@@ -33,7 +42,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
   @override
   void initState() {
     super.initState();
-    _event = FirebaseFirestore.instance.collection('phong_ban');
+    _event = FirebaseFirestore.instance.collection('dia_diem');
   }
 
   @override
@@ -42,7 +51,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
       appBar: AppBar(
         automaticallyImplyLeading: false,
         title:
-            Text('Danh sách phòng ban', style: TextStyle(color: Colors.white)),
+            Text('Danh sách địa điểm', style: TextStyle(color: Colors.white)),
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.of(context).pop(),
@@ -89,7 +98,6 @@ class _ListPhongBanState extends State<ListPhongBan> {
                 //     ),
                 //   ],
                 // ),
-
                 SizedBox(
                   width: 10,
                 ),
@@ -99,7 +107,7 @@ class _ListPhongBanState extends State<ListPhongBan> {
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: Colors.white,
-                        hintText: 'Tìm phòng ban(theo tên)',
+                        hintText: 'Tìm địa điểm(theo tên)',
                         enabled: true,
                         contentPadding: const EdgeInsets.only(
                             left: 14.0, bottom: 8.0, top: 8.0),
@@ -115,10 +123,10 @@ class _ListPhongBanState extends State<ListPhongBan> {
                       onChanged: (value) {
                         setState(() {
                           _event = FirebaseFirestore.instance
-                              .collection('phong_ban')
-                              .where('ten_phong_ban',
+                              .collection('dia_diem')
+                              .where('ten_dia_diem',
                                   isGreaterThanOrEqualTo: value)
-                              .orderBy('ten_phong_ban')
+                              .orderBy('ten_dia_diem')
                               .startAt([value]).endAt([value + '\uf8ff']);
                         });
                       },
@@ -146,63 +154,79 @@ class _ListPhongBanState extends State<ListPhongBan> {
                     //     documentSnapshot['ngay_toi_thieu'].toDate();
                     // String formatngay_toi_thieu =
                     //     DateFormat('dd/MM/yyyy').format(ngay_toi_thieu);
-                    if (documentSnapshot.id == UserID.localUID) {
-                      return Container(height: 0);
+                    if (widget.isRouteGD == false &&
+                        widget.isRouteTK == false) {
+                      if (documentSnapshot['is_from_google_calendar'] == true)
+                        return Container(
+                          height: 0,
+                        );
                     }
-
                     return Card(
                       margin: const EdgeInsets.all(10),
-                      child: ListTile(
-                        onTap: () async {
-                          final res = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => ListPhongBanDetails(
-                                  documentSnapshot.id, widget.isRouteGD),
+                      child: widget.isRoutePB || widget.isRouteTVPB
+                          ? ListTile(
+                              title: Text(documentSnapshot['ten_dia_diem']),
+                              subtitle: Text(documentSnapshot['ghi_chu']),
+                              trailing: documentSnapshot['trang_thai']
+                                  ? Text('')
+                                  : Text('Bị khoá'),
+                            )
+                          : ListTile(
+                              onTap: () async {
+                                final res = await Navigator.push<bool>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ListDiaDiemDetails(
+                                      documentSnapshot.id,
+                                      widget.isRouteGD,
+                                    ),
+                                  ),
+                                );
+                                print(documentSnapshot.id);
+                                //Navigator.of(context).maybePop();
+                                // final res = await Navigator.push<bool>(
+                                //   context,
+                                //   MaterialPageRoute(
+                                //     builder: (_) => DuyetEventMain(
+                                //       eventID: documentSnapshot.id,
+                                //       firstDate: _firstDay,
+                                //       lastDate: _lastDay,
+                                //       selectedDate: dataSelectedDay.selectedDay,
+                                //     ),
+                                //   ),
+                                // );
+                              },
+                              title: Text(documentSnapshot['ten_dia_diem']),
+                              subtitle: Text(documentSnapshot['ghi_chu']),
+                              trailing: documentSnapshot['trang_thai']
+                                  ? Text('')
+                                  : Text('Bị khoá'),
+                              // trailing: PopupMenuButton(
+                              //     icon: Icon(Icons.more_vert),
+                              //     itemBuilder: (context) => [
+                              //           PopupMenuItem(
+                              //               child: ListTile(
+                              //             leading: Icon(Icons.edit),
+                              //             title: Text('Chi tiết'),
+                              //             onTap: () async {
+                              //               print(documentSnapshot.id);
+                              //               final res = await Navigator.push<bool>(
+                              //                 context,
+                              //                 MaterialPageRoute(
+                              //                   builder: (_) => ItemDetailsThuKi(
+                              //                       documentSnapshot.id, true, false),
+                              //                 ),
+                              //               );
+                              //               Navigator.of(context).maybePop();
+                              //             },
+                              //           )),
+                              //           PopupMenuItem(
+                              //               child: ListTile(
+                              //             leading: Icon(Icons.delete),
+                              //             title: Text('Chọn'),
+                              //           )),
+                              //         ]),
                             ),
-                          );
-                          print(documentSnapshot.id);
-                          //Navigator.of(context).maybePop();
-                          // final res = await Navigator.push<bool>(
-                          //   context,
-                          //   MaterialPageRoute(
-                          //     builder: (_) => DuyetEventMain(
-                          //       eventID: documentSnapshot.id,
-                          //       firstDate: _firstDay,
-                          //       lastDate: _lastDay,
-                          //       selectedDate: dataSelectedDay.selectedDay,
-                          //     ),
-                          //   ),
-                          // );
-                        },
-                        title: Text(documentSnapshot['ten_phong_ban']),
-                        subtitle: Text(documentSnapshot['email']),
-                        // trailing: PopupMenuButton(
-                        //     icon: Icon(Icons.more_vert),
-                        //     itemBuilder: (context) => [
-                        //           PopupMenuItem(
-                        //               child: ListTile(
-                        //             leading: Icon(Icons.edit),
-                        //             title: Text('Chi tiết'),
-                        //             onTap: () async {
-                        //               print(documentSnapshot.id);
-                        //               final res = await Navigator.push<bool>(
-                        //                 context,
-                        //                 MaterialPageRoute(
-                        //                   builder: (_) => ItemDetailsThuKi(
-                        //                       documentSnapshot.id, true, false),
-                        //                 ),
-                        //               );
-                        //               Navigator.of(context).maybePop();
-                        //             },
-                        //           )),
-                        //           PopupMenuItem(
-                        //               child: ListTile(
-                        //             leading: Icon(Icons.delete),
-                        //             title: Text('Chọn'),
-                        //           )),
-                        //         ]),
-                      ),
                     );
                   },
                 );

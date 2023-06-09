@@ -2,16 +2,16 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'login.dart';
-// import 'model.dart';
 
-class Register extends StatefulWidget {
+import '../../data/UserID.dart';
+
+class PBThemTaiKhoan extends StatefulWidget {
   @override
-  _RegisterState createState() => _RegisterState();
+  _PBThemTaiKhoanState createState() => _PBThemTaiKhoanState();
 }
 
-class _RegisterState extends State<Register> {
-  _RegisterState();
+class _PBThemTaiKhoanState extends State<PBThemTaiKhoan> {
+  _PBThemTaiKhoanState();
 
   bool showProgress = false;
   bool visible = false;
@@ -27,13 +27,11 @@ class _RegisterState extends State<Register> {
   final TextEditingController sdtController = new TextEditingController();
   final TextEditingController appPasswordController =
       new TextEditingController();
-  final TextEditingController faxController = new TextEditingController();
   bool _isObscure = true;
   bool _isObscure2 = true;
-  File? file;
 
   var rool = "";
-
+  var phongBanID = '';
   List<DropdownMenuItem<String>> _categoriesList = [];
   String selectedPB = '0';
   late bool isLoading = false;
@@ -42,24 +40,21 @@ class _RegisterState extends State<Register> {
   void initState() {
     super.initState();
     isSignUpSuccess = true;
-    layMaTruongPhong();
-    print(rool);
+    layPhongBanID();
   }
 
-  void layMaTruongPhong() async {
-    final collectionRef = FirebaseFirestore.instance.collection('quyen_han');
-    final querySnapshot = await collectionRef
-        .where('ten_quyen_han', isEqualTo: 'Trưởng phòng ban')
-        .get();
-    final docId = querySnapshot.docs.first.id;
-    rool = docId;
-  }
-
-  void updateTrangThaiTruongPhong() async {
-    await FirebaseFirestore.instance
-        .collection('phong_ban')
-        .doc(selectedPB)
-        .update({"is_truong_phong": true});
+  layPhongBanID() async {
+    setState(() {
+      isLoading = true;
+    });
+    final taikhoanCollection =
+        FirebaseFirestore.instance.collection('tai_khoan');
+    final userDoc = await taikhoanCollection.doc(UserID.localUID).get();
+    phongBanID = userDoc['phong_ban_id'];
+    print(phongBanID);
+    setState(() {
+      isLoading = false;
+    });
   }
 
   @override
@@ -304,10 +299,11 @@ class _RegisterState extends State<Register> {
                                 children: [
                                   StreamBuilder<QuerySnapshot>(
                                       stream: FirebaseFirestore.instance
-                                          .collection('phong_ban')
-                                          .where('is_truong_phong',
-                                              isEqualTo: false)
-                                          .snapshots(),
+                                          .collection('quyen_han')
+                                          .where('ten_quyen_han', whereIn: [
+                                        'Thành viên phòng ban',
+                                        "Phó phòng ban"
+                                      ]).snapshots(),
                                       builder: (context, snapshot) {
                                         List<DropdownMenuItem> tenPBItems = [];
                                         if (!snapshot.hasData) {
@@ -318,13 +314,13 @@ class _RegisterState extends State<Register> {
                                               .toList();
                                           tenPBItems.add(DropdownMenuItem(
                                               value: '0',
-                                              child: Text('Chọn phòng ban')));
+                                              child: Text('Chọn quyền hạn')));
                                           for (var tenPhongBan in dsTenPB!) {
                                             tenPBItems.add(
                                               DropdownMenuItem(
                                                 value: tenPhongBan.id,
                                                 child: Text(
-                                                  tenPhongBan['ten_phong_ban'],
+                                                  tenPhongBan['ten_quyen_han'],
                                                 ),
                                               ),
                                             );
@@ -506,7 +502,7 @@ class _RegisterState extends State<Register> {
               backgroundColor: Color.fromARGB(255, 255, 0, 0),
               title: Center(
                 child: Text(
-                  'Hãy chọn phòng ban',
+                  'Hãy chọn quyền hạn',
                   style: const TextStyle(color: Colors.white),
                 ),
               ),
@@ -550,8 +546,6 @@ class _RegisterState extends State<Register> {
           //   ScaffoldMessenger.of(context).showSnackBar(snackBar);
           // }
           if (isSignUpSuccess != false) {
-            updateTrangThaiTruongPhong();
-            print('Đã update trạng thái trưởng phòng');
             Navigator.of(context).pop();
             final snackBar = SnackBar(
               content: Text('Đã đăng kí tài khoản thành công!'),
@@ -602,8 +596,8 @@ class _RegisterState extends State<Register> {
       'app_password': appPasswordController.text,
       'so_dien_thoai': sdtController.text,
       'FCMtoken': '',
-      'phong_ban_id': selectedPB,
-      'quyen_han_id': rool
+      'phong_ban_id': phongBanID,
+      'quyen_han_id': selectedPB
     });
     // Navigator.pushReplacement(
     //     context, MaterialPageRoute(builder: (context) => LoginPage()));

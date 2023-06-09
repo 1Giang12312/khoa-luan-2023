@@ -1,25 +1,25 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+//import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
+import 'package:pdf_viewer_plugin/pdf_viewer_plugin.dart';
 
-class PDFScreen extends StatefulWidget {
+class PDFViwer extends StatefulWidget {
   final String url;
 
-  PDFScreen({Key? key, required this.url}) : super(key: key);
+  PDFViwer({Key? key, required this.url}) : super(key: key);
 
   @override
-  _PDFScreenState createState() => _PDFScreenState();
+  _PDFViwerState createState() => _PDFViwerState();
 }
 
-class _PDFScreenState extends State<PDFScreen> {
+class _PDFViwerState extends State<PDFViwer> {
   String? pdfPath;
-  File docFile = File('');
+  String path = '';
   var docUrl = '';
-
   Future<File> loadPDF() async {
     try {
       docUrl = await FirebaseStorage.instance
@@ -40,6 +40,12 @@ class _PDFScreenState extends State<PDFScreen> {
     return await DefaultCacheManager().getSingleFile(docUrl);
   }
 
+  Future<String> getFilePath() async {
+    final file = await loadPDF();
+    path = file.path;
+    return path;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -53,8 +59,8 @@ class _PDFScreenState extends State<PDFScreen> {
       builder: (BuildContext context, AsyncSnapshot<File> snapshot) {
         if (snapshot.connectionState == ConnectionState.done &&
             snapshot.hasData) {
-          return PDFView(
-            filePath: snapshot.data!.path,
+          return PdfView(
+            path: snapshot.data!.path,
           );
         } else if (snapshot.hasError) {
           return Text('Error: ${snapshot.error}');

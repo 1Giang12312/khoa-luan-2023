@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/src/widgets/framework.dart';
 import 'package:flutter/src/widgets/placeholder.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:google_nav_bar/google_nav_bar.dart';
 import 'package:khoa_luan1/account_profile.dart';
 import 'package:khoa_luan1/pages/giamdoc/GD_home_page.dart';
@@ -28,7 +27,6 @@ class _DashBoardState extends State<DashBoard> {
   @override
   void initState() {
     super.initState();
-
     phanQuyen();
     print('uid:' + UserID.localUID);
   }
@@ -42,7 +40,7 @@ class _DashBoardState extends State<DashBoard> {
   int _pageindex = 0;
   List<Widget> _defaultList = [];
   final List<Widget> _tablist_GD = [
-    GiamDocHomePage(),
+    ThuKiHomePage(),
     ToDoList(),
     ToDoListTuan(),
     AccountProfile(
@@ -63,13 +61,21 @@ class _DashBoardState extends State<DashBoard> {
     toDoListTuan.ToDoListTuan(),
     AccountProfile(routeID: 'PB')
   ];
+  final List<Widget> _tablist_PB_thanh_vien = [
+    PhongBanHomePage(),
+    toDoListNgay.ToDoList(),
+    toDoListTuan.ToDoListTuan(),
+    AccountProfile(routeID: 'TVPB')
+  ];
   void phanQuyen() {
     if (widget.route == 'PB') {
       _defaultList = _tablist_PB;
     } else if (widget.route == 'TK') {
       _defaultList = _tablist_TK;
-    } else {
+    } else if (widget.route == 'GD') {
       _defaultList = _tablist_GD;
+    } else {
+      _defaultList = _tablist_PB_thanh_vien;
     }
   }
 
@@ -199,31 +205,63 @@ class _DashBoardState extends State<DashBoard> {
       );
     } else {
       return Scaffold(
-        body: SafeArea(
+        body: Center(
           child: _defaultList[_pageindex],
         ),
-        bottomNavigationBar: BottomNavigationBar(
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.grey,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          backgroundColor: Colors.black,
-          currentIndex: _pageindex,
-          onTap: onTabTapped,
-          items: [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.add),
-              label: 'Add event',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person),
-              label: 'Profile',
-            ),
-          ],
+        bottomNavigationBar: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                blurRadius: 20,
+                color: Colors.black.withOpacity(.1),
+              )
+            ],
+          ),
+          child: SafeArea(
+            child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 0.0, vertical: 0),
+                child: Container(
+                  height: 50,
+                  child: GNav(
+                    backgroundColor: Colors.grey[50]!,
+                    rippleColor: Colors.grey[300]!,
+                    hoverColor: Colors.grey[100]!,
+                    gap: 8,
+                    activeColor: Colors.black,
+                    iconSize: 24,
+                    padding: EdgeInsets.symmetric(horizontal: 5, vertical: 5),
+                    duration: Duration(milliseconds: 400),
+                    tabBackgroundColor: Colors.grey[100]!,
+                    color: Colors.black,
+                    tabs: [
+                      GButton(
+                        icon: CupertinoIcons.home,
+                        text: 'Trang chủ',
+                      ),
+                      GButton(
+                        icon: CupertinoIcons.calendar_today,
+                        text: 'Ngày',
+                      ),
+                      GButton(
+                        icon: CupertinoIcons.calendar,
+                        text: 'Tuần',
+                      ),
+                      GButton(
+                        icon: CupertinoIcons.settings,
+                        text: 'Cài đặt',
+                      ),
+                    ],
+                    selectedIndex: _pageindex,
+                    onTabChange: (index) {
+                      setState(() {
+                        _pageindex = index;
+                      });
+                    },
+                  ),
+                )),
+          ),
         ),
       );
     }
